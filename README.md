@@ -124,15 +124,3 @@ pytest tests/
 ## 📚 Documentation
 
 See `docs/` directory for detailed documentation, architecture diagrams, and API references.
-
-## 📄 License
-
-See LICENSE file.
-
-## 👥 Contributors
-
-- Your Name / Team
-
-## 🤝 Contributing
-
-Contributions are welcome! Please submit issues and pull requests.
