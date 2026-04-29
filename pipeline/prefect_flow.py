@@ -3,6 +3,7 @@
 Koordinasi ingestion tasks:
 - Open-Meteo weather data (6 months per trigger)
 - NYC TLC Trip Record data (handled separately)
+- Zona Taxi
 
 FITUR OTOMASI:
 1. Flow bisa dijalankan manual: python pipeline/prefect_flow.py
@@ -13,17 +14,10 @@ Untuk deploy dengan scheduling:
 
 Atau jalankan dengan schedule via Python:
   prefect deployment build pipeline.prefect_flow:main_pipeline \\
-    --cron "0 2 * * *" \\
+        --cron "0 0 1 * *" \
     --apply
 
-ARCHITECTURE (ETL):
-  Raw Data (E)
-      ↓ [Ingest]
-  Raw Parquet
-      ↓ [Clean]
-  Cleaned Parquet
-      ↓ [Transform]
-  Intermediate Data ← Ready untuk preprocessing & ML
+
 """
 
 from datetime import datetime
@@ -32,12 +26,14 @@ from typing import Optional
 from prefect import flow, get_run_logger
 
 from ingestion.fetch_weather import ingest_weather_flow
-from preprocessing.preprocessing_flow import preprocessing_weather_flow
+from ingestion.ingest_nyc import ingest_nyc_flow
+from ingestion.ingest_zone import ingest_zone_lookup_flow
+# from preprocessing.preprocessing_flow import preprocessing_weather_flow
 
 
 @flow(
     name="main_elt_pipeline",
-    description="Master ELT pipeline: Weather ingestion + preprocessing dengan otomasi",
+    description="Master ELT pipeline: Zone + NYC Taxi + Weather ingestion dengan otomasi",
 )
 def main_pipeline(
     start_date: Optional[str] = None,
@@ -62,20 +58,48 @@ def main_pipeline(
         weather_output_dir: Output directory untuk weather data
 
     Returns:
-        Dictionary dengan hasil ingestion + preprocessing
+        Dictionary dengan hasil ingestion
     """
     logger = get_run_logger()
 
     logger.info("=" * 70)
-    logger.info("🚀 Starting Main ETL Pipeline - Weather Ingestion + Preprocessing")
+    logger.info("🚀 Starting Main ELT  Pipeline - Zone + NYC Taxi + Weather Ingestion")
     logger.info("=" * 70)
     logger.info(f"⏰ Timestamp: {datetime.now().isoformat()}")
 
     results = {}
 
-    # ===== STAGE 1: EXTRACT (Ingestion) =====
+    # ===== STAGE 1A: EXTRACT (Taxi Zone Lookup) =====
     logger.info("\n" + "-" * 70)
-    logger.info("[STAGE 1] EXTRACT - Ingesting weather data from Open-Meteo API")
+    logger.info("[STAGE 1A] EXTRACT - Ingesting Taxi Zone Lookup data")
+    logger.info("-" * 70)
+
+    try:
+        ingest_zone_lookup_flow()
+        results["zone"] = {"status": "success"}
+        logger.info("✓ Taxi Zone ingestion completed successfully!")
+
+    except Exception as e:
+        logger.error(f"✗ Taxi Zone ingestion failed: {str(e)}")
+        raise
+
+    # ===== STAGE 1B: EXTRACT (NYC Yellow Taxi Trips) =====
+    logger.info("\n" + "-" * 70)
+    logger.info("[STAGE 1B] EXTRACT - Ingesting NYC Yellow Taxi trip data")
+    logger.info("-" * 70)
+
+    try:
+        ingest_nyc_flow()
+        results["nyc_taxi"] = {"status": "success"}
+        logger.info("✓ NYC Yellow Taxi ingestion completed successfully!")
+
+    except Exception as e:
+        logger.error(f"✗ NYC Yellow Taxi ingestion failed: {str(e)}")
+        raise
+
+    # ===== STAGE 1C: EXTRACT (Weather) =====
+    logger.info("\n" + "-" * 70)
+    logger.info("[STAGE 1C] EXTRACT - Ingesting weather data from Open-Meteo API")
     logger.info("-" * 70)
 
     try:
@@ -84,7 +108,7 @@ def main_pipeline(
             end_date=end_date,
             output_dir=weather_output_dir,
         )
-        results["ingestion"] = weather_result
+        results["weather"] = weather_result
 
         logger.info(f"✓ Weather ingestion completed successfully!")
         logger.info(f"  📊 Date range: {weather_result['date_range']}")
@@ -96,40 +120,40 @@ def main_pipeline(
         raise
 
     # ===== STAGE 2: TRANSFORM (Preprocessing) =====
-    logger.info("\n" + "-" * 70)
-    logger.info("[STAGE 2] TRANSFORM - Cleaning + Feature Engineering")
-    logger.info("-" * 70)
+    # logger.info("\n" + "-" * 70)
+    # logger.info("[STAGE 2] TRANSFORM - Cleaning + Feature Engineering")
+    # logger.info("-" * 70)
 
-    try:
-        preprocessing_result = preprocessing_weather_flow(
-            raw_hourly_file=weather_result["hourly_file"],
-            raw_daily_file=weather_result["daily_file"],
-            output_dir=weather_output_dir,
-        )
-        results["preprocessing"] = preprocessing_result
+    # try:
+    #     preprocessing_result = preprocessing_weather_flow(
+    #         raw_hourly_file=weather_result["hourly_file"],
+    #         raw_daily_file=weather_result["daily_file"],
+    #         output_dir=weather_output_dir,
+    #     )
+    #     results["preprocessing"] = preprocessing_result
 
-        logger.info(f"✓ Weather preprocessing completed successfully!")
-        logger.info(f"  Hourly transformed: {preprocessing_result['hourly_transformed']['rows']} rows")
-        logger.info(f"  Daily transformed: {preprocessing_result['daily_transformed']['rows']} rows")
+    #     logger.info(f"✓ Weather preprocessing completed successfully!")
+    #     logger.info(f"  Hourly transformed: {preprocessing_result['hourly_transformed']['rows']} rows")
+    #     logger.info(f"  Daily transformed: {preprocessing_result['daily_transformed']['rows']} rows")
 
-    except Exception as e:
-        logger.error(f"✗ Weather preprocessing failed: {str(e)}")
-        raise
+    # except Exception as e:
+    #     logger.error(f"✗ Weather preprocessing failed: {str(e)}")
+    #     raise
 
     # ===== STAGE 3: LOAD (Ready) =====
-    logger.info("\n" + "-" * 70)
-    logger.info("[STAGE 3] LOAD - Intermediate data ready for next stages")
-    logger.info("-" * 70)
+    # logger.info("\n" + "-" * 70)
+    # logger.info("[STAGE 3] LOAD - Intermediate data ready for next stages")
+    # logger.info("-" * 70)
 
-    logger.info(f"✓ Intermediate data saved at:")
-    logger.info(f"  📁 {preprocessing_result['hourly_transformed']['output_file']}")
-    logger.info(f"  📁 {preprocessing_result['daily_transformed']['output_file']}")
+    # logger.info(f"✓ Intermediate data saved at:")
+    # logger.info(f"  📁 {preprocessing_result['hourly_transformed']['output_file']}")
+    # logger.info(f"  📁 {preprocessing_result['daily_transformed']['output_file']}")
 
     logger.info("\n" + "=" * 70)
-    logger.info("✅ Main ETL Pipeline Completed Successfully")
+    logger.info("✅ Main  Pipeline Completed Successfully")
     logger.info("=" * 70)
 
-    return results
+    return {"ingestion": results}
 
 
 # ===================================================================
@@ -143,9 +167,9 @@ def main_pipeline(
 # 2. VIA PREFECT CLI (Recommended):
 #    prefect deployment build pipeline/prefect_flow.py:main_pipeline \
 #      --name "weather-etl" \
-#      --cron "0 2 * * *" \
+#      --cron "0 0 1 * *" \
 #      --apply
-#    # Ini akan jalankan flow otomatis setiap hari jam 2 AM
+#    # Ini akan jalankan flow otomatis setiap tanggal 1 jam 00:00
 #
 # 3. VIA PREFECT WORKER:
 #    prefect worker start
@@ -154,38 +178,4 @@ def main_pipeline(
 
 
 if __name__ == "__main__":
-    result = main_pipeline()
-
-    print("\n" + "=" * 70)
-    print("📊 PIPELINE EXECUTION SUMMARY (ETL)")
-    print("=" * 70)
-
-    ingestion_data = result.get("ingestion", {})
-    preprocessing_data = result.get("preprocessing", {})
-
-    print(f"\n✅ [EXTRACT] Weather Ingestion:")
-    print(f"   📅 Date range: {ingestion_data.get('date_range', 'N/A')}")
-    print(f"   ⏱️  Hourly records: {ingestion_data.get('records_hourly', 0):,}")
-    print(f"   📈 Daily records: {ingestion_data.get('records_daily', 0):,}")
-
-    print(f"\n✅ [TRANSFORM] Preprocessing:")
-
-    if preprocessing_data.get("hourly_transformed"):
-        hourly = preprocessing_data["hourly_transformed"]
-        print(f"   Hourly cleaned + transformed:")
-        print(f"     - Rows: {hourly.get('rows', 0):,}")
-        print(f"     - Output: {hourly.get('output_file', 'N/A')}")
-
-    if preprocessing_data.get("daily_transformed"):
-        daily = preprocessing_data["daily_transformed"]
-        print(f"   Daily cleaned + transformed:")
-        print(f"     - Rows: {daily.get('rows', 0):,}")
-        print(f"     - Output: {daily.get('output_file', 'N/A')}")
-
-    print("\n" + "=" * 70)
-    print("🎯 Next Steps:")
-    print("  1. Join weather data dengan TLC data per jam")
-    print("  2. Build star schema (fact_trips + dimensions)")
-    print("  3. SQL analysis + ML modeling")
-    print("  4. Dashboard visualization")
-    print("=" * 70)
+    main_pipeline.serve(name="monthly-master-ingestion", cron="0 0 1 * *")
