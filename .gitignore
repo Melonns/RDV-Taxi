@@ -52,3 +52,6 @@ env/
 # dbt
 target/
 logs/
+
+# ML artifacts
+ml/saved/
