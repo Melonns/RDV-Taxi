@@ -36,7 +36,7 @@ def ingest_nyc_flow():
     logger.info("Memulai NYC ingestion flow...")
 
     # 1. Siapkan folder penyimpanan secara otomatis
-    output_dir = "data_raw"
+    output_dir = "data/raw/tlc"
     os.makedirs(output_dir, exist_ok=True)
     logger.info(f"Direktori output disiapkan pada folder: {output_dir}/")
 
