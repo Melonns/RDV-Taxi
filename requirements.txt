@@ -1,28 +1,19 @@
 # Orchestration
-prefect==2.13.0
-prefect-dbt==0.3.2
+prefect>=2.13.0
+prefect-dbt>=0.7.0
 
-# Data Processing
-duckdb==0.9.1
-psycopg2-binary==2.9.9
-pandas==2.0.3
-numpy==1.24.3
+# Data Warehouse (Primary)
+duckdb>=0.9.0
+pandas>=2.0.0
+numpy>=1.24.0
 
 # Transformation
-dbt-core==1.7.0
-dbt-duckdb==1.7.0
-dbt-postgres==1.7.0
+dbt-core>=1.7.0
+dbt-duckdb>=1.7.0
 
-# Visualization
-streamlit==1.28.0
-plotly==5.17.0
-altair==5.0.1
-
-# API
-requests==2.31.0
-openmeteo-requests==1.1.6
+# API & Data Ingestion
+requests>=2.31.0
+openmeteo-requests>=1.1.0
 
 # Utilities
-python-dotenv==1.0.0
-pydantic==2.4.0
-pydantic-settings==2.0.3
+python-dotenv>=1.0.0
