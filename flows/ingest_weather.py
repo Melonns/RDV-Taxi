@@ -7,8 +7,7 @@ __all__ = ["fetch_weather_data", "ingest_weather_flow"]
 
 
 if __name__ == "__main__":
-    ingest_weather_flow()
-    
+    result = ingest_weather_flow()
     print("\n[SUCCESS] Ingestion Complete!")
     print(f"Hourly data: {result['hourly_file']}")
     print(f"Daily data: {result['daily_file']}")
