@@ -3,6 +3,7 @@
 Koordinasi ingestion tasks:
 - Open-Meteo weather data (6 months per trigger)
 - NYC TLC Trip Record data (handled separately)
+- Zona Taxi
 
 FITUR OTOMASI:
 1. Flow bisa dijalankan manual: python pipeline/prefect_flow.py
@@ -13,17 +14,10 @@ Untuk deploy dengan scheduling:
 
 Atau jalankan dengan schedule via Python:
   prefect deployment build pipeline.prefect_flow:main_pipeline \\
-    --cron "0 2 * * *" \\
+        --cron "0 0 1 * *" \
     --apply
 
-ARCHITECTURE (ETL):
-  Raw Data (E)
-      ↓ [Ingest]
-  Raw Parquet
-      ↓ [Clean]
-  Cleaned Parquet
-      ↓ [Transform]
-  Intermediate Data ← Ready untuk preprocessing & ML
+
 """
 
 from datetime import datetime
@@ -32,15 +26,14 @@ from typing import Optional
 from prefect import flow, get_run_logger
 
 from ingestion.fetch_weather import ingest_weather_flow
-from preprocessing.preprocessing_flow import (
-    preprocessing_weather_flow,
-    preprocessing_tlc_flow,
-)
+from ingestion.ingest_nyc import ingest_nyc_flow
+from ingestion.ingest_zone import ingest_zone_lookup_flow
+# from preprocessing.preprocessing_flow import preprocessing_weather_flow
 
 
 @flow(
     name="main_elt_pipeline",
-    description="Master ELT pipeline: Weather ETL + TLC ELT into DuckDB",
+    description="Master ELT pipeline: Zone + NYC Taxi + Weather ingestion dengan otomasi",
 )
 def main_pipeline(
     start_date: Optional[str] = None,
@@ -68,7 +61,7 @@ def main_pipeline(
         raw_tlc_files: List of raw TLC parquet file paths (optional)
 
     Returns:
-        Dictionary dengan hasil ingestion + preprocessing weather + TLC
+        Dictionary dengan hasil ingestion
     """
     logger = get_run_logger()
 
@@ -77,16 +70,44 @@ def main_pipeline(
         db_path = "./data/final/tlc.duckdb"
 
     logger.info("=" * 70)
-    logger.info("🚀 Starting Main ELT Pipeline - Weather + TLC Processing")
+    logger.info("🚀 Starting Main ELT  Pipeline - Zone + NYC Taxi + Weather Ingestion")
     logger.info("=" * 70)
     logger.info(f"⏰ Timestamp: {datetime.now().isoformat()}")
     logger.info(f"📊 DuckDB: {db_path}")
 
     results = {}
 
-    # ===== STAGE 1: EXTRACT (Ingestion) =====
+    # ===== STAGE 1A: EXTRACT (Taxi Zone Lookup) =====
     logger.info("\n" + "-" * 70)
-    logger.info("[STAGE 1] EXTRACT - Ingesting weather data from Open-Meteo API")
+    logger.info("[STAGE 1A] EXTRACT - Ingesting Taxi Zone Lookup data")
+    logger.info("-" * 70)
+
+    try:
+        ingest_zone_lookup_flow()
+        results["zone"] = {"status": "success"}
+        logger.info("✓ Taxi Zone ingestion completed successfully!")
+
+    except Exception as e:
+        logger.error(f"✗ Taxi Zone ingestion failed: {str(e)}")
+        raise
+
+    # ===== STAGE 1B: EXTRACT (NYC Yellow Taxi Trips) =====
+    logger.info("\n" + "-" * 70)
+    logger.info("[STAGE 1B] EXTRACT - Ingesting NYC Yellow Taxi trip data")
+    logger.info("-" * 70)
+
+    try:
+        ingest_nyc_flow()
+        results["nyc_taxi"] = {"status": "success"}
+        logger.info("✓ NYC Yellow Taxi ingestion completed successfully!")
+
+    except Exception as e:
+        logger.error(f"✗ NYC Yellow Taxi ingestion failed: {str(e)}")
+        raise
+
+    # ===== STAGE 1C: EXTRACT (Weather) =====
+    logger.info("\n" + "-" * 70)
+    logger.info("[STAGE 1C] EXTRACT - Ingesting weather data from Open-Meteo API")
     logger.info("-" * 70)
 
     try:
@@ -95,7 +116,7 @@ def main_pipeline(
             end_date=end_date,
             output_dir=weather_output_dir,
         )
-        results["weather_ingestion"] = weather_result
+        results["weather"] = weather_result
 
         logger.info(f"✓ Weather ingestion completed successfully!")
         logger.info(f"  📊 Date range: {weather_result['date_range']}")
@@ -106,60 +127,35 @@ def main_pipeline(
         logger.error(f"✗ Weather ingestion failed: {str(e)}")
         raise
 
-    # ===== STAGE 2A: TRANSFORM Weather (ETL) =====
-    logger.info("\n" + "-" * 70)
-    logger.info("[STAGE 2A] TRANSFORM - Weather cleaning + feature engineering (ETL)")
-    logger.info("-" * 70)
+    # ===== STAGE 2: TRANSFORM (Preprocessing) =====
+    # logger.info("\n" + "-" * 70)
+    # logger.info("[STAGE 2] TRANSFORM - Cleaning + Feature Engineering")
+    # logger.info("-" * 70)
 
-    try:
-        preprocessing_result = preprocessing_weather_flow(
-            raw_hourly_file=weather_result["hourly_file"],
-            raw_daily_file=weather_result["daily_file"],
-            output_dir=weather_output_dir,
-        )
-        results["weather_preprocessing"] = preprocessing_result
+    # try:
+    #     preprocessing_result = preprocessing_weather_flow(
+    #         raw_hourly_file=weather_result["hourly_file"],
+    #         raw_daily_file=weather_result["daily_file"],
+    #         output_dir=weather_output_dir,
+    #     )
+    #     results["preprocessing"] = preprocessing_result
 
-        logger.info(f"✓ Weather preprocessing completed successfully!")
-        logger.info(f"  Hourly transformed: {preprocessing_result['hourly_transformed']['rows']} rows")
-        logger.info(f"  Daily transformed: {preprocessing_result['daily_transformed']['rows']} rows")
+    #     logger.info(f"✓ Weather preprocessing completed successfully!")
+    #     logger.info(f"  Hourly transformed: {preprocessing_result['hourly_transformed']['rows']} rows")
+    #     logger.info(f"  Daily transformed: {preprocessing_result['daily_transformed']['rows']} rows")
 
-    except Exception as e:
-        logger.error(f"✗ Weather preprocessing failed: {str(e)}")
-        raise
+    # except Exception as e:
+    #     logger.error(f"✗ Weather preprocessing failed: {str(e)}")
+    #     raise
 
-    # ===== STAGE 2B: TRANSFORM TLC (ELT in DuckDB) =====
-    logger.info("\n" + "-" * 70)
-    logger.info("[STAGE 2B] TRANSFORM - TLC ELT (Load raw → Transform in DuckDB SQL)")
-    logger.info("-" * 70)
+    # ===== STAGE 3: LOAD (Ready) =====
+    # logger.info("\n" + "-" * 70)
+    # logger.info("[STAGE 3] LOAD - Intermediate data ready for next stages")
+    # logger.info("-" * 70)
 
-    if raw_tlc_files:
-        try:
-            tlc_result = preprocessing_tlc_flow(
-                raw_tlc_files=raw_tlc_files,
-                db_path=db_path,
-            )
-            results["tlc_preprocessing"] = tlc_result
-
-            logger.info(f"✓ TLC ELT completed successfully!")
-            logger.info(f"  Staging table: tlc_raw ({tlc_result['load']['rows']:,} rows)")
-            logger.info(f"  Intermediate table: tlc_cleaned ({tlc_result['transform']['rows_after']:,} rows)")
-            logger.info(f"  Retention rate: {tlc_result['transform']['retention_rate']:.2f}%")
-
-        except Exception as e:
-            logger.error(f"✗ TLC ELT failed: {str(e)}")
-            raise
-    else:
-        logger.warning("⚠️  No TLC files provided - skipping TLC ELT stage")
-        results["tlc_preprocessing"] = {"status": "skipped"}
-
-    # ===== STAGE 3: Summary =====
-    logger.info("\n" + "-" * 70)
-    logger.info("[STAGE 3] SUMMARY - Intermediate data ready for modeling")
-    logger.info("-" * 70)
-
-    logger.info(f"✓ Weather intermediate data (parquet):")
-    logger.info(f"  📁 {preprocessing_result['hourly_transformed']['output_file']}")
-    logger.info(f"  📁 {preprocessing_result['daily_transformed']['output_file']}")
+    # logger.info(f"✓ Intermediate data saved at:")
+    # logger.info(f"  📁 {preprocessing_result['hourly_transformed']['output_file']}")
+    # logger.info(f"  📁 {preprocessing_result['daily_transformed']['output_file']}")
 
     if raw_tlc_files:
         logger.info(f"✓ TLC intermediate data (DuckDB):")
@@ -167,10 +163,10 @@ def main_pipeline(
         logger.info(f"  📋 Tables: tlc_raw, tlc_cleaned")
 
     logger.info("\n" + "=" * 70)
-    logger.info("✅ Main ELT Pipeline Completed Successfully")
+    logger.info("✅ Main  Pipeline Completed Successfully")
     logger.info("=" * 70)
 
-    return results
+    return {"ingestion": results}
 
 
 # ===================================================================
@@ -184,9 +180,9 @@ def main_pipeline(
 # 2. VIA PREFECT CLI (Recommended):
 #    prefect deployment build pipeline/prefect_flow.py:main_pipeline \
 #      --name "weather-etl" \
-#      --cron "0 2 * * *" \
+#      --cron "0 0 1 * *" \
 #      --apply
-#    # Ini akan jalankan flow otomatis setiap hari jam 2 AM
+#    # Ini akan jalankan flow otomatis setiap tanggal 1 jam 00:00
 #
 # 3. VIA PREFECT WORKER:
 #    prefect worker start
@@ -195,57 +191,4 @@ def main_pipeline(
 
 
 if __name__ == "__main__":
-    result = main_pipeline()
-
-    print("\n" + "=" * 70)
-    print("📊 PIPELINE EXECUTION SUMMARY (ELT)")
-    print("=" * 70)
-
-    weather_ingestion = result.get("weather_ingestion", {})
-    weather_preprocessing = result.get("weather_preprocessing", {})
-    tlc_preprocessing = result.get("tlc_preprocessing", {})
-
-    print(f"\n✅ [EXTRACT] Weather Ingestion:")
-    print(f"   📅 Date range: {weather_ingestion.get('date_range', 'N/A')}")
-    print(f"   ⏱️  Hourly records: {weather_ingestion.get('records_hourly', 0):,}")
-    print(f"   📈 Daily records: {weather_ingestion.get('records_daily', 0):,}")
-
-    print(f"\n✅ [TRANSFORM] Weather Preprocessing (ETL):")
-
-    if weather_preprocessing.get("hourly_transformed"):
-        hourly = weather_preprocessing["hourly_transformed"]
-        print(f"   Hourly cleaned + transformed:")
-        print(f"     - Rows: {hourly.get('rows', 0):,}")
-        print(f"     - Output: {hourly.get('output_file', 'N/A')}")
-
-    if weather_preprocessing.get("daily_transformed"):
-        daily = weather_preprocessing["daily_transformed"]
-        print(f"   Daily cleaned + transformed:")
-        print(f"     - Rows: {daily.get('rows', 0):,}")
-        print(f"     - Output: {daily.get('output_file', 'N/A')}")
-
-    if tlc_preprocessing.get("status") != "skipped":
-        print(f"\n✅ [TRANSFORM] TLC ELT (Load → Transform in DuckDB):")
-        
-        if tlc_preprocessing.get("load"):
-            load_data = tlc_preprocessing["load"]
-            print(f"   Stage 1 - Load to staging:")
-            print(f"     - Table: {load_data.get('table', 'N/A')}")
-            print(f"     - Rows: {load_data.get('rows', 0):,}")
-
-        if tlc_preprocessing.get("transform"):
-            transform_data = tlc_preprocessing["transform"]
-            print(f"   Stage 2 - Transform in DB:")
-            print(f"     - Rows before: {transform_data.get('rows_before', 0):,}")
-            print(f"     - Rows after: {transform_data.get('rows_after', 0):,}")
-            print(f"     - Retention: {transform_data.get('retention_rate', 0):.2f}%")
-            if transform_data.get("anomalies"):
-                print(f"     - Anomalies filtered: {len(transform_data['anomalies'])} types")
-
-    print("\n" + "=" * 70)
-    print("🎯 Next Steps:")
-    print("  1. Create dbt/SQL models for star schema (fact_trips + dimensions)")
-    print("  2. Load final data to DuckDB (data/final/tlc.duckdb)")
-    print("  3. SQL analysis + ML modeling")
-    print("  4. Dashboard visualization")
-    print("=" * 70)
+    main_pipeline.serve(name="monthly-master-ingestion", cron="0 0 1 * *")
