@@ -39,33 +39,41 @@ def main_pipeline(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     weather_output_dir: Optional[str] = None,
+    db_path: Optional[str] = None,
+    raw_tlc_files: Optional[list] = None,
 ) -> dict:
-    """Master pipeline orchestrator untuk data ingestion + preprocessing (ETL).
+    """Master pipeline orchestrator untuk weather + TLC ELT processing.
 
-    Menjalankan weather data ingestion dan preprocessing secara otomatis.
-    Flow ini bisa di-schedule otomatis via Prefect deployment.
+    ARCHITECTURE:
+      Weather ETL (Python transform → intermediate parquet):
+        Raw Parquet → Clean → Transform → weather_intermediate/
 
-    Flow sequence:
-      1. Fetch weather dari Open-Meteo API
-      2. Save to raw parquet
-      3. Clean anomalies + validate ranges
-      4. Transform + add temporal features
-      5. Save intermediate parquet (ready untuk model)
+      TLC ELT (SQL transform in DuckDB):
+        Raw Parquet → DuckDB(tlc_raw) → SQL Transform → DuckDB(tlc_cleaned)
+
+    Both intermediate stages stored di DuckDB untuk next modeling stage.
 
     Args:
         start_date: Weather start date (YYYY-MM-DD). Default: 2025-01-01
         end_date: Weather end date (YYYY-MM-DD). Default: 2025-06-30
-        weather_output_dir: Output directory untuk weather data
+        weather_output_dir: Output directory untuk weather intermediate files
+        db_path: DuckDB database path. Default: data/final/tlc.duckdb
+        raw_tlc_files: List of raw TLC parquet file paths (optional)
 
     Returns:
         Dictionary dengan hasil ingestion
     """
     logger = get_run_logger()
 
+    # Set defaults
+    if db_path is None:
+        db_path = "./data/final/tlc.duckdb"
+
     logger.info("=" * 70)
     logger.info("🚀 Starting Main ELT  Pipeline - Zone + NYC Taxi + Weather Ingestion")
     logger.info("=" * 70)
     logger.info(f"⏰ Timestamp: {datetime.now().isoformat()}")
+    logger.info(f"📊 DuckDB: {db_path}")
 
     results = {}
 
@@ -148,6 +156,11 @@ def main_pipeline(
     # logger.info(f"✓ Intermediate data saved at:")
     # logger.info(f"  📁 {preprocessing_result['hourly_transformed']['output_file']}")
     # logger.info(f"  📁 {preprocessing_result['daily_transformed']['output_file']}")
+
+    if raw_tlc_files:
+        logger.info(f"✓ TLC intermediate data (DuckDB):")
+        logger.info(f"  📊 Database: {db_path}")
+        logger.info(f"  📋 Tables: tlc_raw, tlc_cleaned")
 
     logger.info("\n" + "=" * 70)
     logger.info("✅ Main  Pipeline Completed Successfully")
