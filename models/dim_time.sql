@@ -1,0 +1,1 @@
+-- dbt model placeholder for dim_time

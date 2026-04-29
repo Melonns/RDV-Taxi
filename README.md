@@ -25,15 +25,24 @@ ELT Pipeline
 │   ├── raw/                       # Raw ingested data
 │   ├── intermediate/              # Staging area for transformations
 │   └── final/                     # Final analysis-ready data
-├── flows/                         # Prefect orchestration
-│   ├── ingest_nyc.py            # NYC data ingestion
-│   ├── ingest_weather.py        # Weather API ingestion
-│   └── main_flow.py             # Master orchestrator
+├── ingestion/                     # Data ingestion
+│   ├── download_tlc.py            # NYC TLC ingestion
+│   └── fetch_weather.py           # Weather API ingestion
+├── pipeline/                      # Prefect orchestration
+│   └── prefect_flow.py            # Master orchestrator
+├── preprocessing/                 # Cleaning and transformation
+│   ├── clean.py
+│   └── transform.py
 ├── dbt_project/                   # dbt transformation models
+├── models/                        # dbt-style SQL models
+├── analysis/                      # SQL analysis queries
+├── ml/                            # Feature engineering and ML models
+├── schema/                        # Star schema definition
 ├── dashboard/                     # Streamlit visualization
 │   ├── app.py                    # Main dashboard app
 │   └── components/               # Reusable UI components
 ├── docs/                          # Documentation & screenshots
+│   └── screenshots/
 ├── requirements.txt               # Python dependencies
 ├── .env.example                   # Environment variables template
 ├── .gitignore                     # Git ignore rules
@@ -107,7 +116,8 @@ streamlit run dashboard/app.py
 
 ### Adding New Components
 
-- **Flows**: Add new tasks/flows in `flows/` directory
+- **Ingestion**: Add new tasks/flows in `ingestion/` directory
+- **Pipeline**: Add the master orchestrator in `pipeline/`
 - **Transformations**: Add dbt models in `dbt_project/models/`
 - **Dashboard Pages**: Create new Streamlit pages in `dashboard/`
 

@@ -1,29 +1,17 @@
-"""
-Prefect flow for fetching Open-Meteo Historical Weather API data.
+"""Legacy compatibility wrapper for weather ingestion."""
 
-Fetches weather data for NYC and stores it in the raw data directory.
-"""
-
-import prefect
-from prefect import flow, task
+from ingestion.fetch_weather import fetch_weather_data, ingest_weather_flow
 
 
-@task
-def fetch_weather_data():
-    """Fetch weather data from Open-Meteo API."""
-    logger = prefect.get_run_logger()
-    logger.info("Starting weather data fetch...")
-    # Implementation here
-    pass
-
-
-@flow
-def ingest_weather_flow():
-    """Master flow for weather data ingestion."""
-    logger = prefect.get_run_logger()
-    logger.info("Running weather ingestion flow...")
-    fetch_weather_data()
+__all__ = ["fetch_weather_data", "ingest_weather_flow"]
 
 
 if __name__ == "__main__":
     ingest_weather_flow()
+    
+    print("\n[SUCCESS] Ingestion Complete!")
+    print(f"Hourly data: {result['hourly_file']}")
+    print(f"Daily data: {result['daily_file']}")
+    print(f"Date range: {result['date_range']}")
+    print(f"Records (hourly): {result['records_hourly']}")
+    print(f"Records (daily): {result['records_daily']}")
