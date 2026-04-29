@@ -13,8 +13,8 @@ WITH time_data AS (
         EXTRACT(DAY FROM pickup_datetime) as day,
         EXTRACT(QUARTER FROM pickup_datetime) as quarter,
         EXTRACT(WEEK FROM pickup_datetime) as week_of_year,
-        EXTRACT(DAY_OF_WEEK FROM pickup_datetime) as day_of_week_number,
-        CASE EXTRACT(DAY_OF_WEEK FROM pickup_datetime)
+        EXTRACT(DOW FROM pickup_datetime) as day_of_week_number,
+        CASE EXTRACT(DOW FROM pickup_datetime)
             WHEN 0 THEN 'Sunday'
             WHEN 1 THEN 'Monday'
             WHEN 2 THEN 'Tuesday'
@@ -22,8 +22,9 @@ WITH time_data AS (
             WHEN 4 THEN 'Thursday'
             WHEN 5 THEN 'Friday'
             WHEN 6 THEN 'Saturday'
+            -- Note: DuckDB DOW returns 0 (Sunday) to 6 (Saturday)
         END as day_of_week_name,
-        CASE WHEN EXTRACT(DAY_OF_WEEK FROM pickup_datetime) IN (0, 6) THEN true ELSE false END as is_weekend,
+        CASE WHEN EXTRACT(DOW FROM pickup_datetime) IN (0, 6) THEN true ELSE false END as is_weekend,
         CASE 
             WHEN EXTRACT(MONTH FROM pickup_datetime) IN (12, 1, 2) THEN 'Winter'
             WHEN EXTRACT(MONTH FROM pickup_datetime) IN (3, 4, 5) THEN 'Spring'

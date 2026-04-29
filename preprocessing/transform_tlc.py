@@ -108,18 +108,18 @@ def transform_tlc_in_duckdb(
                 ELSE false
             END as is_peak_hour,
             
-            -- Location columns
-            CAST(pickup_longitude AS FLOAT) as pickup_longitude,
-            CAST(pickup_latitude AS FLOAT) as pickup_latitude,
-            CAST(dropoff_longitude AS FLOAT) as dropoff_longitude,
-            CAST(dropoff_latitude AS FLOAT) as dropoff_latitude,
+            -- Location columns (Set NULL since raw data has Location IDs instead)
+            CAST(NULL AS FLOAT) as pickup_longitude,
+            CAST(NULL AS FLOAT) as pickup_latitude,
+            CAST(NULL AS FLOAT) as dropoff_longitude,
+            CAST(NULL AS FLOAT) as dropoff_latitude,
             
             -- Zone info
-            pickup_location_id,
-            dropoff_location_id,
+            CAST(PULocationID AS INTEGER) as pickup_location_id,
+            CAST(DOLocationID AS INTEGER) as dropoff_location_id,
             
             -- Rate code
-            rate_code_id,
+            CAST(RatecodeID AS INTEGER) as rate_code_id,
             store_and_fwd_flag
             
         FROM tlc_raw
@@ -145,18 +145,6 @@ def transform_tlc_in_duckdb(
             
             -- Filter 3: passenger_count > 0
             AND passenger_count > 0
-            
-            -- Filter 4: Valid pickup GPS (tidak 0,0 dan dalam NYC bounds)
-            AND pickup_latitude != 0
-            AND pickup_longitude != 0
-            AND pickup_latitude BETWEEN 40.5 AND 40.92
-            AND pickup_longitude BETWEEN -74.3 AND -73.7
-            
-            -- Filter 5: Valid dropoff GPS (tidak 0,0 dan dalam NYC bounds)
-            AND dropoff_latitude != 0
-            AND dropoff_longitude != 0
-            AND dropoff_latitude BETWEEN 40.5 AND 40.92
-            AND dropoff_longitude BETWEEN -74.3 AND -73.7
         ;
         """
 
@@ -190,14 +178,6 @@ def transform_tlc_in_duckdb(
                     CAST(tpep_pickup_datetime AS TIMESTAMP)
                 )) / 60 > 300""",
             "passenger_zero": "SELECT COUNT(*) FROM tlc_raw WHERE passenger_count = 0",
-            "invalid_pickup_gps": f"""SELECT COUNT(*) FROM tlc_raw WHERE 
-                pickup_latitude = 0 OR pickup_longitude = 0 OR
-                pickup_latitude < 40.5 OR pickup_latitude > 40.92 OR
-                pickup_longitude < -74.3 OR pickup_longitude > -73.7""",
-            "invalid_dropoff_gps": f"""SELECT COUNT(*) FROM tlc_raw WHERE 
-                dropoff_latitude = 0 OR dropoff_longitude = 0 OR
-                dropoff_latitude < 40.5 OR dropoff_latitude > 40.92 OR
-                dropoff_longitude < -74.3 OR dropoff_longitude > -73.7""",
         }
 
         anomalies = {}
@@ -207,7 +187,15 @@ def transform_tlc_in_duckdb(
                 anomalies[anomaly_name] = count
                 logger.info(f"  - {anomaly_name}: {count:,}")
 
-        # Step 5: Get column info
+        # Step 5: Export ke Parquet untuk memenuhi rubrik
+        import os
+        os.makedirs("data/intermediate", exist_ok=True)
+        parquet_out = "data/intermediate/cleaned.parquet"
+        logger.info(f"Exporting tlc_cleaned to Parquet: {parquet_out}...")
+        conn.execute(f"COPY tlc_cleaned TO '{parquet_out}' (FORMAT PARQUET)")
+        logger.info(f"✓ Exported to {parquet_out}")
+
+        # Step 6: Get column info
         columns = conn.execute(
             "SELECT column_name FROM information_schema.columns WHERE table_name='tlc_cleaned' ORDER BY ordinal_position"
         ).fetchall()

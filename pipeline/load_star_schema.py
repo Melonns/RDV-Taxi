@@ -173,43 +173,23 @@ def transform_weather_in_duckdb(db_path: str, weather_parquet_dir: str) -> dict:
 
         conn.execute("DROP TABLE IF EXISTS weather_transformed")
 
-        if hourly_path.exists():
-            logger.info(f"Aggregating hourly weather to daily from: {hourly_path}")
-
-            conn.execute(f"""
-                CREATE TABLE weather_transformed AS
-                SELECT
-                    CAST(DATE(timestamp) AS DATE) as date_actual,
-                    COUNT(*) as records_hourly,
-                    AVG(temperature) as avg_temperature,
-                    MIN(temperature) as min_temperature,
-                    MAX(temperature) as max_temperature,
-                    SUM(COALESCE(precipitation, 0)) as total_precipitation,
-                    AVG(COALESCE(relative_humidity, NULL)) as avg_humidity
-                FROM read_parquet('{hourly_path}')
-                WHERE temperature BETWEEN -60 AND 60
-                  AND COALESCE(precipitation, 0) >= 0
-                GROUP BY DATE(timestamp)
-            """)
-
-        elif daily_path.exists():
+        if daily_path.exists():
             logger.info(f"Loading daily weather from: {daily_path}")
 
             conn.execute(f"""
                 CREATE TABLE weather_transformed AS
                 SELECT
                     CAST(date as DATE) as date_actual,
-                    1 as records_hourly,
-                    CAST(temperature as DOUBLE) as avg_temperature,
-                    CAST(min_temperature as DOUBLE) as min_temperature,
-                    CAST(max_temperature as DOUBLE) as max_temperature,
-                    CAST(COALESCE(precipitation, 0) as DOUBLE) as total_precipitation,
-                    CAST(COALESCE(relative_humidity, NULL) as DOUBLE) as avg_humidity
+                    24 as records_hourly,
+                    CAST(temperature_2m_mean as DOUBLE) as avg_temperature,
+                    CAST(temperature_2m_min as DOUBLE) as min_temperature,
+                    CAST(temperature_2m_max as DOUBLE) as max_temperature,
+                    CAST(COALESCE(precipitation_sum, 0) as DOUBLE) as total_precipitation,
+                    CAST(COALESCE(relative_humidity_2m_mean, NULL) as DOUBLE) as avg_humidity
                 FROM read_parquet('{daily_path}')
             """)
-
         else:
-            raise FileNotFoundError(f"No weather parquet found in {weather_parquet_dir}")
+            raise FileNotFoundError(f"Weather daily parquet not found at {daily_path}")
 
         # Add derived columns and basic categorization
         conn.execute("ALTER TABLE weather_transformed ADD COLUMN IF NOT EXISTS temperature_category VARCHAR")

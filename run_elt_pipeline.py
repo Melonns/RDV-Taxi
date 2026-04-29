@@ -48,6 +48,13 @@ def find_tlc_files(tlc_dir: str = "data/raw") -> List[str]:
     logger.info(f"\n📁 Searching for TLC files in: {tlc_dir}")
 
     tlc_path = Path(tlc_dir)
+    
+    # Check fallback to tlc subfolder
+    if tlc_path.exists() and not list(tlc_path.glob("yellow_tripdata_*.parquet")):
+        if (tlc_path / "tlc").exists():
+            tlc_path = tlc_path / "tlc"
+            logger.info(f"📁 Checking subfolder for TLC files: {tlc_path}")
+
     if not tlc_path.exists():
         logger.error(f"❌ Directory not found: {tlc_dir}")
         return []
@@ -111,6 +118,45 @@ def run_pipeline(
     logger.info("\n" + "=" * 70)
     logger.info("[STAGE 1] Finding source data files")
     logger.info("=" * 70)
+
+    # Auto-preprocess weather if raw exists and transformed is missing
+    raw_weather_dir = Path("data/raw/weather")
+    intermediate_weather_dir = Path("data/intermediate/weather")
+    
+    daily_transformed = intermediate_weather_dir / "weather_daily_transformed.parquet"
+    hourly_transformed = intermediate_weather_dir / "weather_hourly_transformed.parquet"
+    
+    if not daily_transformed.exists() and raw_weather_dir.exists():
+        logger.info("\n" + "=" * 70)
+        logger.info("[AUTO] Preprocessing weather data (Clean + Transform)...")
+        logger.info("=" * 70)
+        
+        try:
+            raw_daily = list(raw_weather_dir.glob("weather_daily_*.parquet"))
+            raw_hourly = list(raw_weather_dir.glob("weather_hourly_*.parquet"))
+            
+            if raw_daily and raw_hourly:
+                from preprocessing.clean import clean_raw_data
+                from preprocessing.transform import transform_data
+                import os
+                
+                os.makedirs(intermediate_weather_dir, exist_ok=True)
+                
+                # Clean & Transform Daily
+                clean_daily_out = intermediate_weather_dir / f"weather_cleaned_{raw_daily[0].stem}.parquet"
+                logger.info(f"Cleaning daily weather: {raw_daily[0].name}")
+                clean_raw_data(str(raw_daily[0]), str(clean_daily_out))
+                transform_data(str(clean_daily_out), str(daily_transformed))
+                
+                # Clean & Transform Hourly
+                clean_hourly_out = intermediate_weather_dir / f"weather_cleaned_{raw_hourly[0].stem}.parquet"
+                logger.info(f"Cleaning hourly weather: {raw_hourly[0].name}")
+                clean_raw_data(str(raw_hourly[0]), str(clean_hourly_out))
+                transform_data(str(clean_hourly_out), str(hourly_transformed))
+                
+                logger.info("✅ Auto weather preprocessing completed!")
+        except Exception as e:
+            logger.warning(f"⚠️ Auto weather preprocessing failed: {str(e)}")
 
     tlc_files = find_tlc_files(tlc_dir)
     weather_path = find_weather_files(weather_dir)
