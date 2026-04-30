@@ -30,8 +30,17 @@ def download_parquet_file(url: str, filepath: str):
         raise e
 
 @flow(name="Ingest NYC Taxi Data")
-def ingest_nyc_flow():
-    """Master flow for NYC data ingestion."""
+def ingest_nyc_flow(target_month: int = None, target_year: int = None) -> list:
+    """Master flow for NYC data ingestion.
+
+    If `target_month` and `target_year` provided, only that month's parquet
+    will be downloaded and the function returns a list containing that file path.
+    Otherwise, it falls back to downloading the full set (Jan-Jun 2025) for
+    backwards compatibility.
+
+    Returns:
+        List of downloaded (or existing) file paths.
+    """
     logger = prefect.get_run_logger()
     logger.info("Memulai NYC ingestion flow...")
 
@@ -40,39 +49,35 @@ def ingest_nyc_flow():
     os.makedirs(output_dir, exist_ok=True)
     logger.info(f"Direktori output disiapkan pada folder: {output_dir}/")
 
-    # 2. Definisikan parameter data sesuai batasan proyek
     vehicle_types = ["yellow"]
     year = 2025
-    months = [1, 2, 3, 4, 5, 6]  # Januari sampai Juni
-    
     base_url = "https://d37ci6vzurychx.cloudfront.net/trip-data"
 
-    # 3. Looping untuk mengeksekusi penarikan data
+    downloaded_files = []
+
+    # Determine months to fetch
+    if target_month is not None and target_year is not None:
+        months = [int(target_month)]
+        year = int(target_year)
+    else:
+        months = [1, 2, 3, 4, 5, 6]
+
+    # Loop and download only requested months
     for v_type in vehicle_types:
         for month in months:
-            # Format bulan menjadi dua digit (01, 02, 03, 04)
             month_str = f"{month:02d}"
             filename = f"{v_type}_tripdata_{year}-{month_str}.parquet"
-            
             url = f"{base_url}/{filename}"
             filepath = os.path.join(output_dir, filename)
-            
+
             # Panggil Prefect Task
             download_parquet_file(url, filepath)
-            
+            downloaded_files.append(filepath)
+
     logger.info("Seluruh proses ingestion selesai!")
+    return downloaded_files
+
 
 if __name__ == "__main__":
-    # KODE LAMA (Manual):
+    # Default behavior: download full set (backwards compatible)
     ingest_nyc_flow()
-    # Membuat jadwal menggunakan format Cron 
-    # (Contoh: "0 0 1 * *" artinya jalan otomatis setiap tanggal 1 jam 00:00)
-    # jadwal_otomatis = CronSchedule(cron="0 0 1 * *", timezone="Asia/Jakarta")
-
-    # print("Mengaktifkan jadwal otomatisasi ingestion...")
-    
-    # # Mendaftarkan flow ke Prefect Server agar jalan otomatis
-    # ingest_nyc_flow.serve(
-    #     name="jadwal-bulanan-nyc-taxi",
-    #     schedule=jadwal_otomatis
-    # )
