@@ -17,52 +17,6 @@ import duckdb
 logger = logging.getLogger(__name__)
 
 
-def load_weather_to_duckdb(
-    db_path: str,
-    weather_parquet_dir: str,
-) -> dict:
-    """Load weather transformed parquet files ke DuckDB.
-
-    Args:
-        db_path: Path ke DuckDB database
-        weather_parquet_dir: Directory containing weather parquet files
-
-    Returns:
-        Dictionary dengan loading report
-    """
-    logger.info(f"Loading weather data to DuckDB: {db_path}")
-
-    conn = duckdb.connect(db_path)
-
-    try:
-        # Load daily weather
-        daily_pattern = str(Path(weather_parquet_dir) / "weather_daily_transformed.parquet")
-
-        logger.info(f"Loading weather daily from: {daily_pattern}")
-
-        # Drop existing table
-        conn.execute("DROP TABLE IF EXISTS weather_transformed")
-
-        # Load from parquet
-        conn.execute(f"""
-            CREATE TABLE weather_transformed AS
-            SELECT * FROM read_parquet('{daily_pattern}')
-        """)
-
-        count = conn.execute("SELECT COUNT(*) FROM weather_transformed").fetchone()[0]
-
-        logger.info(f"✓ Loaded {count:,} weather records to DuckDB")
-
-        return {
-            "table": "weather_transformed",
-            "rows": count,
-            "status": "loaded",
-        }
-
-    finally:
-        conn.close()
-
-
 def create_star_schema(
     db_path: str,
     models_dir: str = "./models",
@@ -154,74 +108,6 @@ def create_star_schema(
         conn.close()
 
 
-def transform_weather_in_duckdb(db_path: str, weather_parquet_dir: str) -> dict:
-    """Transform and load weather data into DuckDB using SQL-based aggregation/cleaning.
-
-    This prefers hourly transformed parquet (aggregates to daily). Falls back to daily
-    transformed parquet if hourly is not present. Performs basic quality filters
-    and derives temperature categories.
-
-    Returns a report dict with table name and row count.
-    """
-    logger.info(f"Transforming weather in DuckDB: {db_path}")
-
-    conn = duckdb.connect(db_path)
-
-    try:
-        hourly_path = Path(weather_parquet_dir) / "weather_hourly_transformed.parquet"
-        daily_path = Path(weather_parquet_dir) / "weather_daily_transformed.parquet"
-
-        conn.execute("DROP TABLE IF EXISTS weather_transformed")
-
-        if daily_path.exists():
-            logger.info(f"Loading daily weather from: {daily_path}")
-
-            conn.execute(f"""
-                CREATE TABLE weather_transformed AS
-                SELECT
-                    CAST(date as DATE) as date_actual,
-                    24 as records_hourly,
-                    CAST(temperature_2m_mean as DOUBLE) as avg_temperature,
-                    CAST(temperature_2m_min as DOUBLE) as min_temperature,
-                    CAST(temperature_2m_max as DOUBLE) as max_temperature,
-                    CAST(COALESCE(precipitation_sum, 0) as DOUBLE) as total_precipitation,
-                    CAST(COALESCE(relative_humidity_2m_mean, NULL) as DOUBLE) as avg_humidity
-                FROM read_parquet('{daily_path}')
-            """)
-        else:
-            raise FileNotFoundError(f"Weather daily parquet not found at {daily_path}")
-
-        # Add derived columns and basic categorization
-        conn.execute("ALTER TABLE weather_transformed ADD COLUMN IF NOT EXISTS temperature_category VARCHAR")
-
-        conn.execute(
-            """
-            UPDATE weather_transformed
-            SET temperature_category = (
-                CASE
-                    WHEN avg_temperature IS NULL THEN 'Unknown'
-                    WHEN avg_temperature < 0 THEN 'Cold'
-                    WHEN avg_temperature BETWEEN 0 AND 15 THEN 'Cool'
-                    WHEN avg_temperature BETWEEN 15 AND 25 THEN 'Mild'
-                    WHEN avg_temperature BETWEEN 25 AND 35 THEN 'Warm'
-                    ELSE 'Hot'
-                END
-            )
-            """
-        )
-
-        # Final quality counts
-        row_count = conn.execute("SELECT COUNT(*) FROM weather_transformed").fetchone()[0]
-        logger.info(f"✓ Created weather_transformed with {row_count:,} rows")
-
-        return {
-            "table": "weather_transformed",
-            "rows": row_count,
-            "status": "transformed_in_db",
-        }
-
-    finally:
-        conn.close()
 
 
 def generate_schema_summary(db_path: str) -> dict:
@@ -344,15 +230,8 @@ def run_star_schema_pipeline(
 
     results = {}
 
-    # Stage 1: Load weather
-    logger.info("\n[STAGE 1] Loading weather data to DuckDB...")
-    try:
-        weather_result = load_weather_to_duckdb(db_path, weather_parquet_dir)
-        results["weather_load"] = weather_result
-        logger.info(f"✓ Weather loaded")
-    except Exception as e:
-        logger.error(f"✗ Weather load failed: {str(e)}")
-        raise
+    # Stage 1: Skip (already handled by preprocessing)
+    results["weather_load"] = {"status": "skipped_already_processed"}
 
     # Stage 2: Create star schema
     logger.info("\n[STAGE 2] Creating star schema tables...")

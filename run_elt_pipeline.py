@@ -33,11 +33,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import pipeline functions
-from preprocessing.clean_tlc import load_tlc_to_duckdb
-from preprocessing.transform_tlc import transform_tlc_in_duckdb
+from preprocessing.load_tlc import load_tlc_to_duckdb
+from preprocessing.process_tlc import transform_tlc_in_duckdb
+from preprocessing.load_weather import load_weather_to_duckdb
+from preprocessing.process_weather import transform_weather_in_duckdb
 from pipeline.load_star_schema import (
-    load_weather_to_duckdb,
-    transform_weather_in_duckdb,
     create_star_schema,
     generate_schema_summary,
 )
@@ -75,27 +75,24 @@ def find_tlc_files(tlc_dir: str = "data/raw") -> List[str]:
     return [str(f) for f in tlc_files]
 
 
-def find_weather_files(weather_dir: str = "data/intermediate/weather") -> str:
-    """Find weather transformed parquet file."""
+def find_weather_files(weather_dir: str = "data/raw/weather") -> List[str]:
+    """Find raw weather parquet files."""
     logger.info(f"\n🌤️  Searching for weather files in: {weather_dir}")
 
     weather_path = Path(weather_dir)
     if not weather_path.exists():
         logger.warning(f"⚠️  Directory not found: {weather_dir}")
-        logger.info(f"   (Weather will be skipped for now)")
-        return None
+        return []
 
-    # Cari weather_daily_transformed.parquet
-    daily_file = weather_path / "weather_daily_transformed.parquet"
+    # Cari weather_daily_*.parquet
+    weather_files = sorted(weather_path.glob("weather_daily_*.parquet"))
 
-    if daily_file.exists():
-        file_size = daily_file.stat().st_size / 1024 / 1024
-        logger.info(f"✅ Found weather file: {daily_file.name} ({file_size:.1f} MB)")
-        return str(weather_path)
+    if weather_files:
+        logger.info(f"✅ Found {len(weather_files)} weather file(s)")
+        return [str(f) for f in weather_files]
     else:
-        logger.warning(f"⚠️  Weather transformed file not found")
-        logger.info(f"   Expected: {daily_file}")
-        return None
+        logger.warning(f"⚠️  Weather raw files not found")
+        return []
 
 
 def run_pipeline(
@@ -119,47 +116,8 @@ def run_pipeline(
     logger.info("[STAGE 1] Finding source data files")
     logger.info("=" * 70)
 
-    # Auto-preprocess weather if raw exists and transformed is missing
-    raw_weather_dir = Path("data/raw/weather")
-    intermediate_weather_dir = Path("data/intermediate/weather")
-    
-    daily_transformed = intermediate_weather_dir / "weather_daily_transformed.parquet"
-    hourly_transformed = intermediate_weather_dir / "weather_hourly_transformed.parquet"
-    
-    if not daily_transformed.exists() and raw_weather_dir.exists():
-        logger.info("\n" + "=" * 70)
-        logger.info("[AUTO] Preprocessing weather data (Clean + Transform)...")
-        logger.info("=" * 70)
-        
-        try:
-            raw_daily = list(raw_weather_dir.glob("weather_daily_*.parquet"))
-            raw_hourly = list(raw_weather_dir.glob("weather_hourly_*.parquet"))
-            
-            if raw_daily and raw_hourly:
-                from preprocessing.clean import clean_raw_data
-                from preprocessing.transform import transform_data
-                import os
-                
-                os.makedirs(intermediate_weather_dir, exist_ok=True)
-                
-                # Clean & Transform Daily
-                clean_daily_out = intermediate_weather_dir / f"weather_cleaned_{raw_daily[0].stem}.parquet"
-                logger.info(f"Cleaning daily weather: {raw_daily[0].name}")
-                clean_raw_data(str(raw_daily[0]), str(clean_daily_out))
-                transform_data(str(clean_daily_out), str(daily_transformed))
-                
-                # Clean & Transform Hourly
-                clean_hourly_out = intermediate_weather_dir / f"weather_cleaned_{raw_hourly[0].stem}.parquet"
-                logger.info(f"Cleaning hourly weather: {raw_hourly[0].name}")
-                clean_raw_data(str(raw_hourly[0]), str(clean_hourly_out))
-                transform_data(str(clean_hourly_out), str(hourly_transformed))
-                
-                logger.info("✅ Auto weather preprocessing completed!")
-        except Exception as e:
-            logger.warning(f"⚠️ Auto weather preprocessing failed: {str(e)}")
-
     tlc_files = find_tlc_files(tlc_dir)
-    weather_path = find_weather_files(weather_dir)
+    weather_files = find_weather_files("data/raw/weather")
 
     if not tlc_files:
         logger.error("❌ No TLC files found! Cannot continue.")
@@ -212,25 +170,28 @@ def run_pipeline(
         traceback.print_exc()
         return False
 
-    # ========== STAGE 4: Load Weather (Optional) ==========
-    if weather_path:
+    # ========== STAGE 4: Load & Transform Weather (SQL) ==========
+    if weather_files:
         logger.info("\n" + "=" * 70)
-        logger.info("[STAGE 4] Loading weather data to DuckDB")
+        logger.info("[STAGE 4] Loading & Transforming Weather (ELT in DuckDB)")
         logger.info("=" * 70)
 
         try:
-            # Prefer SQL-based transform/load in DB (aggregates hourly -> daily)
-            weather_result = transform_weather_in_duckdb(db_path, weather_path)
+            # Load raw weather to staging
+            load_weather_to_duckdb(db_path, weather_files)
+            
+            # Transform in DB
+            weather_result = transform_weather_in_duckdb(db_path)
 
             logger.info(f"\n✅ SUCCESS:")
             logger.info(f"   Table: {weather_result['table']}")
-            logger.info(f"   Rows: {weather_result['rows']:,}")
+            logger.info(f"   Rows: {weather_result['rows_after']:,}")
 
         except Exception as e:
-            logger.warning(f"\n⚠️  Weather transform/load skipped: {str(e)}")
+            logger.warning(f"\n⚠️  Weather ELT failed: {str(e)}")
             logger.info("   (Will continue without weather data)")
     else:
-        logger.info("\n⏭️  Skipping weather load (no files found)")
+        logger.info("\n⏭️  Skipping weather ELT (no files found)")
 
     # ========== STAGE 5: Create Star Schema ==========
     logger.info("\n" + "=" * 70)

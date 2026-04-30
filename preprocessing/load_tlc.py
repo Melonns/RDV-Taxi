@@ -105,3 +105,13 @@ def load_tlc_to_duckdb(
 
     finally:
         conn.close()
+
+if __name__ == "__main__":
+    # Setup simple logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+    
+    # Run for the first month as default test
+    load_tlc_to_duckdb(
+        "data/final/tlc.duckdb", 
+        ["data/raw/tlc/yellow_tripdata_2025-01.parquet"]
+    )
