@@ -1,13 +1,14 @@
 """Weather data loading (ELT stage): Load raw parquet → DuckDB staging.
 
 ELT Flow:
-  Extract: Raw Weather parquet files (daily/hourly)
-  Load: Load ke DuckDB table weather_raw (staging)
-  Transform: SQL queries untuk cleaning + feature engineering (di process_weather.py)
+    Extract: Raw Weather parquet files (daily/hourly)
+    Load: Load ke DuckDB table weather_raw (staging)
+    Transform: SQL queries untuk cleaning + feature engineering (di process_weather.py)
 
 Handles:
-- Load multiple raw weather parquet files ke DuckDB
-- Create weather_raw table (staging)
+- Load weather parquet files ke DuckDB
+- Create weather_raw table untuk data daily
+- Create weather_hourly_raw table untuk data hourly bila tersedia
 """
 
 import logging
@@ -42,23 +43,21 @@ def load_weather_to_duckdb(
     try:
         logger.info(f"Loading {len(input_parquet_files)} weather parquet files to DuckDB...")
 
+        daily_files = []
+        hourly_files = []
         total_rows = 0
-        loaded_files = []
+        hourly_row_count = 0
 
         for pf in input_parquet_files:
             if Path(pf).exists():
                 logger.info(f"  Loading {pf}...")
 
-                # Read dan load ke DuckDB
-                # Note: Weather data has different schema for daily/hourly, 
-                # we usually process them separately but for staging we can put them in one if schema matches
-                # In this project, we mostly use daily for the star schema.
-                
-                df = conn.execute(
-                    f"SELECT * FROM read_parquet('{pf}')"
-                ).fetch_df()
+                if "hourly" in Path(pf).name.lower():
+                    hourly_files.append(str(pf))
+                else:
+                    daily_files.append(str(pf))
 
-                loaded_files.append(str(pf))
+                df = conn.execute(f"SELECT * FROM read_parquet('{pf}')").fetch_df()
                 total_rows += len(df)
                 logger.info(f"    ✓ {len(df):,} rows")
             else:
@@ -67,22 +66,21 @@ def load_weather_to_duckdb(
         if total_rows == 0:
             raise ValueError("Tidak ada file weather yang berhasil di-load")
 
-        # Create staging table weather_raw dari semua files
-        logger.info(f"\nCreating weather_raw staging table in DuckDB...")
+        # Create staging table weather_raw only from daily files.
+        if not daily_files:
+            raise ValueError("Tidak ada file weather daily yang bisa di-load ke weather_raw")
 
-        # Union all parquet files (assuming similar schema for the files provided)
-        union_query = " UNION ALL ".join(
-            [f"SELECT * FROM read_parquet('{f}')" for f in loaded_files]
+        logger.info("\nCreating weather_raw staging table in DuckDB from daily files...")
+        daily_union_query = " UNION ALL ".join(
+            [f"SELECT * FROM read_parquet('{f}')" for f in daily_files]
         )
 
-        conn.execute(f"DROP TABLE IF EXISTS weather_raw")
-        conn.execute(f"CREATE TABLE weather_raw AS {union_query}")
+        conn.execute("DROP TABLE IF EXISTS weather_raw")
+        conn.execute(f"CREATE TABLE weather_raw AS {daily_union_query}")
 
-        # Get row count
         row_count = conn.execute("SELECT COUNT(*) FROM weather_raw").fetchone()[0]
         logger.info(f"✓ Created weather_raw table with {row_count:,} rows")
 
-        # Get column info
         columns = conn.execute(
             "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='weather_raw'"
         ).fetchall()
@@ -91,11 +89,23 @@ def load_weather_to_duckdb(
         for col_name, col_type in columns:
             logger.info(f"    - {col_name}: {col_type}")
 
+        if hourly_files:
+            logger.info("\nCreating weather_hourly_raw staging table in DuckDB from hourly files...")
+            hourly_union_query = " UNION ALL ".join(
+                [f"SELECT * FROM read_parquet('{f}')" for f in hourly_files]
+            )
+
+            conn.execute("DROP TABLE IF EXISTS weather_hourly_raw")
+            conn.execute(f"CREATE TABLE weather_hourly_raw AS {hourly_union_query}")
+            hourly_row_count = conn.execute("SELECT COUNT(*) FROM weather_hourly_raw").fetchone()[0]
+            logger.info(f"✓ Created weather_hourly_raw table with {hourly_row_count:,} rows")
+
         return {
             "db_path": str(db_path),
             "table": "weather_raw",
             "rows": row_count,
             "columns": len(columns),
+            "hourly_rows": hourly_row_count,
             "status": "loaded_to_staging",
         }
 
