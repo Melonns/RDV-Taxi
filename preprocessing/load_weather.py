@@ -70,35 +70,30 @@ def load_weather_to_duckdb(
         if not daily_files:
             raise ValueError("Tidak ada file weather daily yang bisa di-load ke weather_raw")
 
-        logger.info("\nCreating weather_raw staging table in DuckDB from daily files...")
-        daily_union_query = " UNION ALL ".join(
-            [f"SELECT * FROM read_parquet('{f}')" for f in daily_files]
-        )
-
-        conn.execute("DROP TABLE IF EXISTS weather_raw")
-        conn.execute(f"CREATE TABLE weather_raw AS {daily_union_query}")
+        # Load into weather_raw (Append mode)
+        logger.info("\nLoading data into weather_raw (Append mode)...")
+        
+        # Create table if it doesn't exist
+        conn.execute(f"CREATE TABLE IF NOT EXISTS weather_raw AS SELECT * FROM read_parquet('{daily_files[0]}') LIMIT 0")
+        
+        # Insert data (avoiding simple duplicates by checking date if table has data)
+        for f in daily_files:
+            conn.execute(f"INSERT INTO weather_raw SELECT * FROM read_parquet('{f}') WHERE date NOT IN (SELECT date FROM weather_raw)")
 
         row_count = conn.execute("SELECT COUNT(*) FROM weather_raw").fetchone()[0]
-        logger.info(f"✓ Created weather_raw table with {row_count:,} rows")
-
-        columns = conn.execute(
-            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='weather_raw'"
-        ).fetchall()
-
-        logger.info(f"✓ Table columns ({len(columns)}):")
-        for col_name, col_type in columns:
-            logger.info(f"    - {col_name}: {col_type}")
+        logger.info(f"✓ weather_raw now contains {row_count:,} rows")
 
         if hourly_files:
-            logger.info("\nCreating weather_hourly_raw staging table in DuckDB from hourly files...")
-            hourly_union_query = " UNION ALL ".join(
-                [f"SELECT * FROM read_parquet('{f}')" for f in hourly_files]
-            )
-
-            conn.execute("DROP TABLE IF EXISTS weather_hourly_raw")
-            conn.execute(f"CREATE TABLE weather_hourly_raw AS {hourly_union_query}")
+            logger.info("\nLoading data into weather_hourly_raw (Append mode)...")
+            
+            # Create table if it doesn't exist
+            conn.execute(f"CREATE TABLE IF NOT EXISTS weather_hourly_raw AS SELECT * FROM read_parquet('{hourly_files[0]}') LIMIT 0")
+            
+            for f in hourly_files:
+                conn.execute(f"INSERT INTO weather_hourly_raw SELECT * FROM read_parquet('{f}')")
+            
             hourly_row_count = conn.execute("SELECT COUNT(*) FROM weather_hourly_raw").fetchone()[0]
-            logger.info(f"✓ Created weather_hourly_raw table with {hourly_row_count:,} rows")
+            logger.info(f"✓ weather_hourly_raw now contains {hourly_row_count:,} rows")
 
         return {
             "db_path": str(db_path),
