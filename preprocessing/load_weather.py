@@ -83,6 +83,11 @@ def load_weather_to_duckdb(
         row_count = conn.execute("SELECT COUNT(*) FROM weather_raw").fetchone()[0]
         logger.info(f"✓ weather_raw now contains {row_count:,} rows")
 
+        # Get column info for the report
+        columns = conn.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name='weather_raw'"
+        ).fetchall()
+
         if hourly_files:
             logger.info("\nLoading data into weather_hourly_raw (Append mode)...")
             
