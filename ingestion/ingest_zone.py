@@ -36,7 +36,7 @@ def ingest_zone_lookup_flow():
     logger.info("Memulai ingestion flow untuk Taxi Zone Lookup CSV...")
 
     # 1. Siapkan folder penyimpanan (agar seragam dengan data Parquet)
-    output_dir = "data_raw"
+    output_dir = os.path.join("data", "raw", "tlc")
     os.makedirs(output_dir, exist_ok=True)
     
     # 2. Definisikan URL sumber dan nama file output
