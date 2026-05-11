@@ -1,0 +1,271 @@
+﻿python3.12.exe : 2026-05-11 15:07:30 | INFO | 
+======================================================================
+At line:1 char:54
++ ... \RDV-Taxi"; & "C:/Users/Jonathan Salim/AppData/Local/Microsoft/Window ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-05-11 15:0...=============== 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-05-11 15:07:30 | INFO | \U0001f680 ELT PIPELINE - Simple Runner (No 
+Prefect)
+2026-05-11 15:07:30 | INFO | 
+======================================================================
+2026-05-11 15:07:30 | INFO | 
+======================================================================
+2026-05-11 15:07:30 | INFO | [STAGE 1] Finding source data files
+2026-05-11 15:07:30 | INFO | 
+======================================================================
+2026-05-11 15:07:30 | INFO | 
+\U0001f4c1 Searching for TLC files in: data/raw
+2026-05-11 15:07:30 | INFO | \U0001f4c1 Checking subfolder for TLC files: 
+data\raw\tlc
+2026-05-11 15:07:30 | INFO | \u2705 Found 1 TLC file(s):
+2026-05-11 15:07:30 | INFO |    - yellow_tripdata_2025-01.parquet (56.4 MB)
+2026-05-11 15:07:30 | INFO | 
+\U0001f324\ufe0f  Searching for weather files in: data/raw/weather
+2026-05-11 15:07:30 | INFO | \u2705 Found 1 weather file(s)
+2026-05-11 15:07:30 | INFO | 
+======================================================================
+2026-05-11 15:07:30 | INFO | [STAGE 2] Loading TLC data to DuckDB (Staging)
+2026-05-11 15:07:30 | INFO | 
+======================================================================
+2026-05-11 15:07:30 | INFO | Connecting to DuckDB: data/final/tlc.duckdb
+2026-05-11 15:07:30 | INFO | Loading 1 TLC parquet files to DuckDB...
+2026-05-11 15:07:31 | INFO |   Skipping already-loaded file: 
+data\raw\tlc\yellow_tripdata_2025-01.parquet
+2026-05-11 15:07:31 | INFO | \u2713 tlc_raw now contains 3,475,226 rows
+2026-05-11 15:07:31 | INFO | \u2713 Table columns (20):
+2026-05-11 15:07:31 | INFO |     - VendorID: INTEGER
+2026-05-11 15:07:31 | INFO |     - tpep_pickup_datetime: TIMESTAMP
+2026-05-11 15:07:31 | INFO |     - tpep_dropoff_datetime: TIMESTAMP
+2026-05-11 15:07:31 | INFO |     - passenger_count: BIGINT
+2026-05-11 15:07:31 | INFO |     - trip_distance: DOUBLE
+2026-05-11 15:07:31 | INFO |     - RatecodeID: BIGINT
+2026-05-11 15:07:31 | INFO |     - store_and_fwd_flag: VARCHAR
+2026-05-11 15:07:31 | INFO |     - PULocationID: INTEGER
+2026-05-11 15:07:31 | INFO |     - DOLocationID: INTEGER
+2026-05-11 15:07:31 | INFO |     - payment_type: BIGINT
+2026-05-11 15:07:31 | INFO |     - fare_amount: DOUBLE
+2026-05-11 15:07:31 | INFO |     - extra: DOUBLE
+2026-05-11 15:07:31 | INFO |     - mta_tax: DOUBLE
+2026-05-11 15:07:31 | INFO |     - tip_amount: DOUBLE
+2026-05-11 15:07:31 | INFO |     - tolls_amount: DOUBLE
+2026-05-11 15:07:31 | INFO |     - improvement_surcharge: DOUBLE
+2026-05-11 15:07:31 | INFO |     - total_amount: DOUBLE
+2026-05-11 15:07:31 | INFO |     - congestion_surcharge: DOUBLE
+2026-05-11 15:07:31 | INFO |     - Airport_fee: DOUBLE
+2026-05-11 15:07:31 | INFO |     - cbd_congestion_fee: DOUBLE
+2026-05-11 15:07:31 | INFO | 
+\U0001f4ca TLC Loading Summary:
+2026-05-11 15:07:31 | INFO |   Files loaded: 0
+2026-05-11 15:07:31 | INFO |   Files skipped (already loaded): 1
+2026-05-11 15:07:31 | INFO |   Total rows: 3,475,226
+2026-05-11 15:07:31 | INFO |   Database: data/final/tlc.duckdb
+2026-05-11 15:07:31 | INFO |   Table: tlc_raw
+2026-05-11 15:07:31 | INFO |   Stage: Staging (raw, unfiltered, cumulative)
+2026-05-11 15:07:31 | INFO | 
+\u2705 SUCCESS:
+2026-05-11 15:07:31 | INFO |    Database: data/final/tlc.duckdb
+2026-05-11 15:07:31 | INFO |    Table: tlc_raw
+2026-05-11 15:07:31 | INFO |    Rows: 3,475,226
+2026-05-11 15:07:31 | INFO | 
+======================================================================
+2026-05-11 15:07:31 | INFO | [STAGE 3] Transforming TLC data (SQL in DuckDB)
+2026-05-11 15:07:31 | INFO | 
+======================================================================
+2026-05-11 15:07:31 | INFO | Connecting to DuckDB: data/final/tlc.duckdb
+2026-05-11 15:07:31 | INFO | Starting TLC cleaning SQL transformation...
+2026-05-11 15:07:31 | INFO |   Raw records in tlc_raw: 3,475,226
+2026-05-11 15:07:31 | INFO | Executing SQL transformation...
+2026-05-11 15:07:39 | INFO | 
+\u2713 TLC Cleaning SQL Completed:
+2026-05-11 15:07:39 | INFO |   Rows before: 3,475,226
+2026-05-11 15:07:39 | INFO |   Rows after: 2,849,921
+2026-05-11 15:07:39 | INFO |   Rows removed: 625,305
+2026-05-11 15:07:39 | INFO |   Retention rate: 82.01%
+2026-05-11 15:07:39 | INFO | 
+\U0001f4ca Anomaly Analysis:
+2026-05-11 15:07:39 | INFO |   - fare_negative: 144,118
+2026-05-11 15:07:39 | INFO |   - duration_negative: 124
+2026-05-11 15:07:39 | INFO |   - duration_too_long: 1,233
+2026-05-11 15:07:39 | INFO |   - passenger_zero: 24,656
+2026-05-11 15:07:39 | INFO | Exporting tlc_cleaned to Parquet: 
+data/intermediate/cleaned.parquet...
+2026-05-11 15:07:39 | INFO | \u2713 Exported to 
+data/intermediate/cleaned.parquet
+2026-05-11 15:07:39 | INFO | 
+\u2713 Created tlc_cleaned table:
+2026-05-11 15:07:39 | INFO |   Columns: 25
+2026-05-11 15:07:39 | INFO |     - pickup_datetime
+2026-05-11 15:07:39 | INFO |     - dropoff_datetime
+2026-05-11 15:07:39 | INFO |     - trip_duration_min
+2026-05-11 15:07:39 | INFO |     - fare_amount
+2026-05-11 15:07:39 | INFO |     - extra
+2026-05-11 15:07:39 | INFO |     - mta_tax
+2026-05-11 15:07:39 | INFO |     - tip_amount
+2026-05-11 15:07:39 | INFO |     - tolls_amount
+2026-05-11 15:07:39 | INFO |     - total_amount
+2026-05-11 15:07:39 | INFO |     - tip_percentage
+2026-05-11 15:07:39 | INFO |     ... and 15 more
+2026-05-11 15:07:39 | INFO | 
+======================================================================
+2026-05-11 15:07:39 | INFO | \u2705 TLC Transformation (SQL) Completed 
+Successfully
+2026-05-11 15:07:39 | INFO | 
+======================================================================
+2026-05-11 15:07:40 | INFO | 
+\u2705 SUCCESS:
+2026-05-11 15:07:40 | INFO |    Table: tlc_cleaned
+2026-05-11 15:07:40 | INFO |    Rows before: 3,475,226
+2026-05-11 15:07:40 | INFO |    Rows after: 2,849,921
+2026-05-11 15:07:40 | INFO |    Rows removed: 625,305
+2026-05-11 15:07:40 | INFO |    Retention rate: 82.01%
+2026-05-11 15:07:40 | INFO | 
+   Anomalies filtered:
+2026-05-11 15:07:40 | INFO |      - fare_negative: 144,118
+2026-05-11 15:07:40 | INFO |      - duration_negative: 124
+2026-05-11 15:07:40 | INFO |      - duration_too_long: 1,233
+2026-05-11 15:07:40 | INFO |      - passenger_zero: 24,656
+2026-05-11 15:07:40 | INFO | 
+======================================================================
+2026-05-11 15:07:40 | INFO | [STAGE 4] Loading & Transforming Weather (ELT in 
+DuckDB)
+2026-05-11 15:07:40 | INFO | 
+======================================================================
+2026-05-11 15:07:40 | INFO | Connecting to DuckDB: data/final/tlc.duckdb
+2026-05-11 15:07:40 | INFO | Loading 1 weather parquet files to DuckDB...
+2026-05-11 15:07:40 | INFO |   Loading 
+data\raw\weather\weather_daily_2025-01-01_to_2025-01-31.parquet...
+2026-05-11 15:07:40 | INFO |     \u2713 31 rows
+2026-05-11 15:07:40 | INFO | 
+Loading data into weather_raw (Append mode)...
+2026-05-11 15:07:40 | INFO | \u2713 weather_raw now contains 31 rows
+2026-05-11 15:07:40 | INFO | Connecting to DuckDB: data/final/tlc.duckdb
+2026-05-11 15:07:40 | INFO | Starting Weather cleaning SQL transformation...
+2026-05-11 15:07:40 | INFO |   Raw records in weather_raw: 31
+2026-05-11 15:07:40 | INFO | Executing SQL transformation...
+2026-05-11 15:07:40 | INFO | 
+\u2713 Weather Cleaning SQL Completed:
+2026-05-11 15:07:40 | INFO |   Rows before: 31
+2026-05-11 15:07:40 | INFO |   Rows after: 31
+2026-05-11 15:07:40 | INFO | 
+\u2705 SUCCESS:
+2026-05-11 15:07:40 | INFO |    Table: weather_transformed
+2026-05-11 15:07:40 | INFO |    Rows: 31
+2026-05-11 15:07:40 | INFO | 
+======================================================================
+2026-05-11 15:07:40 | INFO | [STAGE 5] Creating star schema (dimensions + fact 
+table)
+2026-05-11 15:07:40 | INFO | 
+======================================================================
+2026-05-11 15:07:40 | INFO | Creating star schema in DuckDB: 
+data/final/tlc.duckdb
+2026-05-11 15:07:40 | INFO | 
+\U0001f4cb Executing model: dim_time.sql
+2026-05-11 15:07:40 | INFO |   \u2713 Table dim_time: 33 rows
+2026-05-11 15:07:40 | INFO | 
+\U0001f4cb Executing model: dim_location.sql
+2026-05-11 15:07:40 | INFO |   \u2713 Table dim_location: 262 rows
+2026-05-11 15:07:40 | INFO | 
+\U0001f4cb Executing model: dim_weather.sql
+2026-05-11 15:07:40 | INFO |   \u2713 Table dim_weather: 31 rows
+2026-05-11 15:07:40 | INFO | 
+\U0001f4cb Executing model: fact_trips.sql
+2026-05-11 15:07:42 | INFO |   \u2713 Table fact_trips: 2,849,921 rows
+2026-05-11 15:07:42 | INFO | 
+======================================================================
+2026-05-11 15:07:42 | INFO | \u2705 Star Schema Created Successfully
+2026-05-11 15:07:42 | INFO | 
+======================================================================
+2026-05-11 15:07:42 | INFO | 
+Schema structure:
+2026-05-11 15:07:42 | INFO |   \U0001f4cb Dimension tables:
+2026-05-11 15:07:42 | INFO |     - dim_time: 33 records
+2026-05-11 15:07:42 | INFO |     - dim_location: 262 records
+2026-05-11 15:07:42 | INFO |     - dim_weather: 31 records
+2026-05-11 15:07:42 | INFO |   \U0001f4ca Fact table:
+2026-05-11 15:07:42 | INFO |     - fact_trips: 2,849,921 records
+2026-05-11 15:07:42 | INFO | 
+\u2705 SUCCESS:
+2026-05-11 15:07:42 | INFO |    Models created: dim_time, dim_location, 
+dim_weather, fact_trips
+2026-05-11 15:07:42 | INFO |    - dim_time: 33 rows
+2026-05-11 15:07:42 | INFO |    - dim_location: 262 rows
+2026-05-11 15:07:42 | INFO |    - dim_weather: 31 rows
+2026-05-11 15:07:42 | INFO |    - fact_trips: 2,849,921 rows
+2026-05-11 15:07:42 | INFO | 
+======================================================================
+2026-05-11 15:07:42 | INFO | [STAGE 6] Generating schema summary
+2026-05-11 15:07:42 | INFO | 
+======================================================================
+2026-05-11 15:07:42 | INFO | 
+======================================================================
+2026-05-11 15:07:42 | INFO | \U0001f4ca STAR SCHEMA SUMMARY
+2026-05-11 15:07:42 | INFO | 
+======================================================================
+2026-05-11 15:07:42 | INFO | 
+\U0001f4ca Fact Trips Statistics:
+2026-05-11 15:07:42 | INFO |   Total trips: 2,849,921
+2026-05-11 15:07:42 | INFO |   Date range: 2024-12-31 20:47:55 to 2025-02-01 
+00:00:44
+2026-05-11 15:07:42 | INFO |   Total revenue: $79,149,487.36
+2026-05-11 15:07:42 | INFO |   Avg fare: $27.78
+2026-05-11 15:07:42 | INFO |   Avg tip: 22.73%
+2026-05-11 15:07:42 | INFO |   Avg distance: 3.19 miles
+2026-05-11 15:07:42 | INFO |   Avg duration: 14.5 minutes
+2026-05-11 15:07:42 | INFO |   Avg passengers: 1.3
+2026-05-11 15:07:42 | INFO | 
+\U0001f4cb Dimension Table Sizes:
+2026-05-11 15:07:42 | INFO |   dim_time: 1 records
+2026-05-11 15:07:42 | INFO |   dim_location: 262 records
+2026-05-11 15:07:42 | INFO |   dim_weather: 31 records
+2026-05-11 15:07:42 | INFO | 
+======================================================================
+2026-05-11 15:07:42 | INFO | 
+\U0001f4ca SUMMARY:
+2026-05-11 15:07:42 | INFO |    Total trips: 2,849,921
+2026-05-11 15:07:42 | INFO |    Date range: 2024-12-31 20:47:55 to 2025-02-01 
+00:00:44
+2026-05-11 15:07:42 | INFO |    Total revenue: $79,149,487.36
+2026-05-11 15:07:42 | INFO |    Avg fare: $27.78
+2026-05-11 15:07:42 | INFO |    Avg tip: 22.73%
+2026-05-11 15:07:42 | INFO | 
+======================================================================
+2026-05-11 15:07:42 | INFO | \u2705 ELT PIPELINE COMPLETED SUCCESSFULLY!
+2026-05-11 15:07:42 | INFO | 
+======================================================================
+2026-05-11 15:07:42 | INFO | 
+\U0001f4ca Output Database: data/final/tlc.duckdb
+2026-05-11 15:07:42 | INFO | 
+\U0001f4cb Available Tables:
+2026-05-11 15:07:42 | INFO |    - tlc_raw (staging, raw data)
+2026-05-11 15:07:42 | INFO |    - tlc_cleaned (intermediate, filtered + 
+features)
+2026-05-11 15:07:42 | INFO |    - dim_time (dimension, temporal)
+2026-05-11 15:07:42 | INFO |    - dim_location (dimension, locations)
+2026-05-11 15:07:42 | INFO |    - dim_weather (dimension, weather)
+2026-05-11 15:07:42 | INFO |    - fact_trips (fact, central table)
+2026-05-11 15:07:42 | INFO | 
+\U0001f3af Next Steps:
+2026-05-11 15:07:42 | INFO |    1. Query star schema with DuckDB
+2026-05-11 15:07:42 | INFO |    2. Run SQL analysis queries
+2026-05-11 15:07:42 | INFO |    3. Use for ML modeling
+2026-05-11 15:07:42 | INFO |    4. Build dashboard from fact_trips
+2026-05-11 15:07:42 | INFO | 
+\U0001f4a1 Example DuckDB Query:
+2026-05-11 15:07:42 | INFO | 
+        import duckdb
+        conn = duckdb.connect("data/final/tlc.duckdb")
+        result = conn.execute('''
+            SELECT 
+                day_of_week_name,
+                COUNT(*) as trip_count,
+                AVG(total_amount) as avg_fare
+            FROM fact_trips JOIN dim_time USING (time_key)
+            GROUP BY 1 ORDER BY 1
+        ''').fetch_df()
+        print(result)
+    
+2026-05-11 15:07:42 | INFO | 
+======================================================================

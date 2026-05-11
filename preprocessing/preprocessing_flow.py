@@ -8,6 +8,8 @@ from prefect import flow, get_run_logger, task
 
 from preprocessing.load_tlc import load_tlc_to_duckdb
 from preprocessing.process_tlc import transform_tlc_in_duckdb
+from preprocessing.load_weather import load_weather_to_duckdb
+from preprocessing.process_weather import transform_weather_in_duckdb
 
 
 @task

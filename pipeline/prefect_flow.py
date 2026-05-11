@@ -45,6 +45,9 @@ from preprocessing.process_weather import transform_weather_in_duckdb
 from pipeline.load_star_schema import create_star_schema, generate_schema_summary
 # Batch state management
 from pipeline.batch_state import get_next_batch_month, mark_batch_complete, read_state
+# ML training
+from ml.model_duration import train_duration_model
+from ml.model_tip import train_tip_model
 
 
 @flow(
@@ -363,6 +366,33 @@ def main_pipeline(
     logger.info("  → Dashboard/BI tools connecting to DuckDB")
 
     logger.info("\n" + "=" * 70)
+
+    # ===== STAGE 6: OPTIONAL ML TRAINING =====
+    logger.info("\n" + "-" * 70)
+    logger.info("[STAGE 6] ML - Training models (duration & tip) using feature matrix if available")
+    logger.info("-" * 70)
+
+    try:
+        ml_results = {}
+        # Train duration model (if features exist)
+        try:
+            dur_res = train_duration_model()
+            ml_results['duration'] = dur_res
+            logger.info(f"✓ Duration model trained: {dur_res.get('model_path')}")
+        except Exception as e_d:
+            logger.warning(f"⚠️  Duration model training skipped/failed: {str(e_d)}")
+
+        # Train tip model
+        try:
+            tip_res = train_tip_model()
+            ml_results['tip'] = tip_res
+            logger.info(f"✓ Tip model trained: {tip_res.get('model_path')}")
+        except Exception as e_t:
+            logger.warning(f"⚠️  Tip model training skipped/failed: {str(e_t)}")
+
+        results['ml'] = ml_results
+    except Exception as e:
+        logger.error(f"✗ ML stage failed overall: {str(e)}")
 
     return {"ingestion": results}
 
