@@ -83,12 +83,11 @@ prefect server start
 ### 5. Run the Pipeline
 
 ```bash
-# Run main orchestrator
-python flows/main_flow.py
+# Fastest (no Prefect server required)
+python run_elt_pipeline.py
 
-# Or run individual flows
-python flows/ingest_nyc.py
-python flows/ingest_weather.py
+# Prefect manual run (uses Prefect, no schedule)
+python -m pipeline.prefect_flow
 ```
 
 ### 6. View Dashboard
@@ -105,7 +104,7 @@ Prerequisites:
 - Activate the project virtualenv and install `requirements.txt`.
 - Ensure `data/raw/tlc` contains the TLC parquet files (or allow the ingestion flow to download them).
 
-1) Start the Prefect UI (Orion) locally
+1) Start the Prefect UI (Orion) locally (required for scheduling)
 
 ```bash
 # In terminal 1: start Orion (UI)
@@ -113,36 +112,36 @@ prefect server start
 # Open http://127.0.0.1:4200 in your browser
 ```
 
-2) Run the pipeline manually (single batch)
+2) Run the pipeline manually (single batch, no scheduler)
 
 ```bash
 # Manual single execution — pipeline will process the next unprocessed month
-python pipeline/prefect_flow.py
+python -m pipeline.prefect_flow
 ```
 
 3) Demo mode — schedule every 5 minutes (recommended for rapid testing)
 
 ```bash
-# Register & serve a deployment that runs every 5 minutes
-python pipeline/prefect_flow.py --mode demo
+# Terminal 1 (keep running): start Prefect server for the scheduler/UI
+prefect server start
 
-# Ensure an agent/worker is running to execute scheduled runs if needed:
-prefect agent start
+# Terminal 2: register & serve a deployment that runs every 5 minutes
+python -m pipeline.prefect_flow --mode demo
 ```
 
 4) Production mode — schedule daily at 00:00 (midnight)
 
 ```bash
-python pipeline/prefect_flow.py --mode production
+python -m pipeline.prefect_flow --mode production
 
 # Or build and apply a deployment explicitly:
 prefect deployment build pipeline/prefect_flow.py:main_pipeline --name taxi-elt-batch-production --cron "0 0 * * *" --apply
-prefect agent start
 ```
 
 Notes on scheduling behavior
 - Demo mode creates a deployment with cron `*/5 * * * *` (every 5 minutes) and is useful to simulate sequential monthly ingestion quickly.
 - Production mode uses `0 0 * * *` (daily midnight) to process one month per run and mimic slower production cadence.
+- If you see `Cannot schedule flows on an ephemeral server`, it means Prefect server is not running. Start it first with `prefect server start`.
 
 5) Verify runs and pipeline state
 
@@ -169,23 +168,25 @@ PY
 # Reset pipeline state to start from January 2025
 python -c "from pipeline.batch_state import reset_state; reset_state()"
 
-# Remove DuckDB to force fresh load
-rm -f data/final/tlc.duckdb
+# Remove DuckDB to force fresh load (PowerShell)
+Remove-Item -Force data\final\tlc.duckdb
 
-# Optionally clear intermediate files
-rm -rf data/intermediate/*
+# Optionally clear intermediate files (PowerShell)
+Remove-Item -Recurse -Force data\intermediate\*
 ```
 
 Important note:
 - The cumulative batch mode now appends monthly TLC data into DuckDB.
 - If you previously ran the older overwrite-based pipeline, delete `data/final/tlc.duckdb` once so the new cumulative mode starts from a clean slate.
 - After that, each new batch run will keep previous batch data instead of replacing it.
+- After all months (Jan-Jun 2025) are processed, the pipeline will skip ingestion and continue to analytics stages. To re-run from the beginning, reset the state and remove `data/final/tlc.duckdb`.
 
 7) Troubleshooting & tips
 
 - If scheduled runs don't execute, ensure an agent is running (`prefect agent start`).
 - If the pipeline appears to process all months even after scheduling per-month batches, check `data/pipeline_state.json` — it determines the next month to ingest. Reset it to re-run from start.
 - Logs for each flow run are available in the Prefect UI; detailed task logs show whether files were downloaded or skipped because they already exist.
+- If you see `database is locked` or DuckDB IO errors, close any process holding the file (e.g., Google Drive sync) or move the project out of a synced folder.
 
 If you want, I can also add a short `run_pipeline.sh` helper script that wraps the steps above (reset, run once, check state). Want me to add that? 
 
