@@ -6,8 +6,6 @@ from typing import Optional
 
 from prefect import flow, get_run_logger, task
 
-from preprocessing.clean_weather import clean_raw_data
-from preprocessing.transform_weather import transform_data
 from preprocessing.load_tlc import load_tlc_to_duckdb
 from preprocessing.process_tlc import transform_tlc_in_duckdb
 
