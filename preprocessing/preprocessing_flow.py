@@ -84,35 +84,6 @@ def transform_tlc_in_db_task(
 
     return result
 
-
-
-    input_file: str,
-    output_dir: Optional[str] = None,
-) -> dict:
-    """Prefect task untuk transform weather data."""
-    logger = get_run_logger()
-
-    if output_dir is None:
-        output_dir = os.path.join(
-            os.getenv("INTERMEDIATE_DATA_PATH", "./data/intermediate"),
-            "weather",
-        )
-
-    input_path = Path(input_file)
-    output_file = os.path.join(output_dir, f"weather_transformed_{input_path.stem}.parquet")
-
-    logger.info(f"[TRANSFORM] Input: {input_file}")
-    logger.info(f"[TRANSFORM] Output: {output_file}")
-
-    result = transform_data(input_file, output_file, add_features=True)
-
-    logger.info(f"✓ Transform completed")
-    logger.info(f"  Rows: {result['rows']}")
-    logger.info(f"  Columns: {len(result['columns'])}")
-
-    return result
-
-
 @flow(name="preprocessing_weather_flow", description="SQL-based Weather ELT")
 def preprocessing_weather_flow(
     raw_weather_files: list,
@@ -148,27 +119,7 @@ def preprocessing_weather_flow(
     return results
 
 
-@flow(name="preprocessing_tlc_flow", description="Clean + Transform + Join TLC with weather")
-def preprocessing_tlc_flow(
-    raw_tlc_files: list,
-    weather_transformed_file: str,
-    output_dir: Optional[str] = None,
-) -> dict:
-    """Preprocessing flow untuk TLC data: clean + transform + join weather.
-
-    Args:
-        raw_tlc_files: List of raw TLC parquet file paths
-        weather_transformed_file: Path to transformed weather parquet
-        output_dir: Output directory untuk intermediate data
-
-    Returns:
-        Dictionary dengan cleaned + transformed + joined file paths
-    """
-    logger = get_run_logger()
-
-    logger.info("=" * 70)
-    logger.info("🧹 Starting TLC Preprocessing (Clean + Transform + Join Weather)")
-    logger.info("=" * 70)ELT for TLC: Load raw → DuckDB → Transform with SQL")
+@flow(name="preprocessing_tlc_flow", description="ELT for TLC: Load raw → DuckDB → Transform with SQL")
 def preprocessing_tlc_flow(
     raw_tlc_files: list,
     db_path: str,
@@ -212,7 +163,7 @@ def preprocessing_tlc_flow(
         results["transform"] = transform_result
         logger.info(f"✓ TLC transformed (tlc_cleaned table)")
 
-        if transform_result["anomalies"]:
+        if transform_result.get("anomalies"):
             logger.info(f"\n  Anomalies detected and filtered:")
             for anomaly, count in transform_result["anomalies"].items():
                 logger.info(f"    - {anomaly}: {count:,}")
@@ -224,4 +175,7 @@ def preprocessing_tlc_flow(
     logger.info("\n" + "=" * 70)
     logger.info("✅ TLC ELT Pipeline Completed Successfully")
     logger.info(f"  Database: {db_path}")
-    logger.info(f"  Tables created: tlc_raw (staging), tlc_cleaned (intermediate)
+    logger.info(f"  Tables created: tlc_raw (staging), tlc_cleaned (intermediate)")
+    
+    return results
+
