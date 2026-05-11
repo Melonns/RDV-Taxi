@@ -10,23 +10,37 @@ import urllib.request
 import prefect
 from prefect import flow, task
 
-@task(retries=2, retry_delay_seconds=15)
+
+
+@task(retries=3, retry_delay_seconds=30)
 def download_parquet_file(url: str, filepath: str):
-    """Download a single parquet file from a given URL with retries on failure."""
+    """Download a single parquet file from a given URL with retries and atomic save."""
     logger = prefect.get_run_logger()
     
-    # Cek apakah file sudah pernah di-download sebelumnya agar tidak boros kuota
+    # Cek apakah file sudah ada
     if os.path.exists(filepath):
-        logger.info(f"File sudah ada, melewati proses download: {filepath}")
-        return
+        if os.path.getsize(filepath) > 1000:
+            logger.info(f"File sudah ada dan valid, melewati download: {filepath}")
+            return
+        else:
+            logger.warning(f"File {filepath} ditemukan tapi terlalu kecil/corrupt. Mendownload ulang...")
+            os.remove(filepath)
 
-    logger.info(f"Mulai mendownload: {url}")
+    temp_filepath = f"{filepath}.tmp"
+    logger.info(f"Mulai mendownload: {url} -> {temp_filepath}")
+    
     try:
-        # Menarik file dari URL dan menyimpannya ke filepath lokal
-        urllib.request.urlretrieve(url, filepath)
+        # Menarik file dari URL dan menyimpannya ke filepath temporary
+        urllib.request.urlretrieve(url, temp_filepath)
+        
+        # Rename atomicly
+        os.replace(temp_filepath, filepath)
         logger.info(f"Sukses disimpan di: {filepath}")
+        
     except Exception as e:
         logger.error(f"Gagal mendownload {url}. Error: {e}")
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
         raise e
 
 @flow(name="Ingest NYC Taxi Data")
