@@ -43,10 +43,10 @@ SELECT
     t.tip_percentage,
     
     -- Location coordinates
-    t.pickup_longitude,
-    t.pickup_latitude,
-    t.dropoff_longitude,
-    t.dropoff_latitude,
+    dl_pickup.longitude as pickup_longitude,
+    dl_pickup.latitude as pickup_latitude,
+    dl_dropoff.longitude as dropoff_longitude,
+    dl_dropoff.latitude as dropoff_latitude,
     
     -- Weather conditions at pickup time
     COALESCE(dw.temperature_2m, -999.0) as temperature_2m,

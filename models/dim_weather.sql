@@ -10,10 +10,11 @@ SELECT
     CAST(avg_temperature AS FLOAT) as temperature_2m,
     CAST(avg_humidity AS FLOAT) as relative_humidity_2m,
     CAST(total_precipitation AS FLOAT) as precipitation,
-    CAST(NULL AS FLOAT) as wind_speed_10m,
-    CAST(NULL AS FLOAT) as wind_direction_10m,
-    CAST(NULL AS INTEGER) as weather_code,
-    COALESCE(temperature_category, 'Unknown') as weather_description,
+    CAST(wind_speed AS FLOAT) as wind_speed_10m,
+    CAST(wind_direction AS FLOAT) as wind_direction_10m,
+    CAST(weather_code AS INTEGER) as weather_code,
+    COALESCE(weather_category, 'Unknown') as weather_description,
+    COALESCE(temperature_category, 'Unknown') as temperature_description,
     CASE 
         WHEN CAST(avg_temperature AS FLOAT) < 0 THEN 'Freezing'
         WHEN CAST(avg_temperature AS FLOAT) < 10 THEN 'Cold'
@@ -26,10 +27,12 @@ FROM (
     SELECT 
         CAST(date_actual AS DATE) as date_col,
         avg_temperature,
-        min_temperature,
-        max_temperature,
         avg_humidity,
         total_precipitation,
+        wind_speed,
+        wind_direction,
+        weather_code,
+        weather_category,
         temperature_category
     FROM weather_transformed
 )

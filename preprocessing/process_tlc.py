@@ -145,6 +145,9 @@ def transform_tlc_in_duckdb(
             
             -- Filter 3: passenger_count > 0
             AND passenger_count > 0
+
+            -- Filter 4: Only year 2025 (Clean noise/invalid meter dates)
+            AND EXTRACT(YEAR FROM CAST(tpep_pickup_datetime AS TIMESTAMP)) = 2025
         ;
         """
 

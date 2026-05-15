@@ -43,7 +43,8 @@ def transform_weather_in_duckdb(db_path: str) -> dict:
         # Tentukan kolom mana yang mau di-ffill (biasanya kolom numerik cuaca)
         weather_cols = [
             "temperature_2m_mean", "temperature_2m_max", "temperature_2m_min",
-            "precipitation_sum", "relative_humidity_2m_mean", "wind_speed_10m_max"
+            "precipitation_sum", "relative_humidity_2m_mean", 
+            "wind_speed_10m_mean", "wind_direction_10m_mean", "weathercode"
         ]
         available_cols = [c for c in weather_cols if c in cols]
         
@@ -61,6 +62,7 @@ def transform_weather_in_duckdb(db_path: str) -> dict:
         WITH ffilled AS (
             SELECT 
                 date,
+                weather_category,
                 {ffill_query if available_cols else "*"}
             FROM weather_raw
         )
@@ -84,6 +86,10 @@ def transform_weather_in_duckdb(db_path: str) -> dict:
             END as total_precipitation,
             
             relative_humidity_2m_mean as avg_humidity,
+            wind_speed_10m_mean as wind_speed,
+            wind_direction_10m_mean as wind_direction,
+            weathercode as weather_code,
+            weather_category,
             
             -- Temporal features
             EXTRACT(YEAR FROM CAST(date AS DATE)) as year,

@@ -10,11 +10,67 @@ Ini adalah tahap LOAD dari ELT pipeline yang menggunakan SQL untuk transformasi.
 """
 
 import logging
+import csv
 from pathlib import Path
 
 import duckdb
 
 logger = logging.getLogger(__name__)
+
+# Default path untuk enriched zone lookup CSV
+DEFAULT_ZONE_LOOKUP_CSV = "./data/raw/tlc/taxi_zone_lookup.csv"
+
+
+def load_zone_lookup_to_duckdb(conn: duckdb.DuckDBPyConnection, zone_csv_path: str = DEFAULT_ZONE_LOOKUP_CSV) -> int:
+    """Load enriched taxi_zone_lookup.csv ke DuckDB sebagai reference table.
+
+    Kolom yang dimuat: location_id, borough, zone, service_zone, latitude, longitude
+    Table akan di-DROP dan di-CREATE ulang setiap pipeline run (kecil + jarang berubah).
+
+    Args:
+        conn: DuckDB connection yang sudah terbuka
+        zone_csv_path: Path ke taxi_zone_lookup.csv hasil ingest_zone_lookup_flow()
+
+    Returns:
+        Jumlah baris yang dimuat ke DuckDB
+    """
+    csv_path = Path(zone_csv_path)
+    if not csv_path.exists():
+        logger.warning(f"⚠️  Zone lookup CSV tidak ditemukan: {zone_csv_path}")
+        logger.warning("    dim_location akan tetap dibuat tapi lat/lon akan NULL")
+        logger.warning("    Jalankan ingest_zone_lookup_flow() terlebih dahulu untuk mengisi koordinat.")
+        # Buat table kosong agar dim_location.sql tidak error saat LEFT JOIN
+        conn.execute("""
+            DROP TABLE IF EXISTS taxi_zone_lookup;
+            CREATE TABLE taxi_zone_lookup (
+                location_id   INTEGER,
+                borough       VARCHAR,
+                zone          VARCHAR,
+                service_zone  VARCHAR,
+                latitude      FLOAT,
+                longitude     FLOAT
+            );
+        """)
+        return 0
+
+    logger.info(f"Loading taxi zone lookup → DuckDB: {zone_csv_path}")
+    conn.execute("""
+        DROP TABLE IF EXISTS taxi_zone_lookup;
+        CREATE TABLE taxi_zone_lookup AS
+        SELECT
+            CAST(location_id   AS INTEGER) AS location_id,
+            borough,
+            zone,
+            service_zone,
+            CAST(latitude      AS FLOAT)   AS latitude,
+            CAST(longitude     AS FLOAT)   AS longitude
+        FROM read_csv_auto('{csv}', header=True);
+    """.replace("{csv}", str(csv_path).replace("\\", "/")))
+
+    row_count = conn.execute("SELECT COUNT(*) FROM taxi_zone_lookup").fetchone()[0]
+    null_lat = conn.execute("SELECT COUNT(*) FROM taxi_zone_lookup WHERE latitude IS NULL").fetchone()[0]
+    logger.info(f"  ✓ taxi_zone_lookup: {row_count} zones loaded ({null_lat} without coordinates)")
+    return row_count
 
 
 def create_star_schema(
@@ -41,6 +97,13 @@ def create_star_schema(
     conn = duckdb.connect(db_path)
 
     try:
+        # ── Pre-step: Load taxi zone lookup (needed by dim_location.sql JOIN) ──
+        zone_csv = Path(models_dir).parent / "data" / "raw" / "tlc" / "taxi_zone_lookup.csv"
+        # Fallback ke default path jika relative path tidak ketemu
+        if not zone_csv.exists():
+            zone_csv = Path(DEFAULT_ZONE_LOOKUP_CSV)
+        load_zone_lookup_to_duckdb(conn, str(zone_csv))
+
         models_order = [
             "dim_time.sql",
             "dim_location.sql",
