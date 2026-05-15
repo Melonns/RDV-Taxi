@@ -41,6 +41,10 @@ from pipeline.load_star_schema import (
     create_star_schema,
     generate_schema_summary,
 )
+from ml.feature_engineering import build_feature_matrix
+from ml.model_duration import train_duration_model
+from ml.model_tip import train_tip_model
+from ml.analysis import export_feature_importance
 
 
 def find_tlc_files(tlc_dir: str = "data/raw") -> List[str]:
@@ -237,6 +241,39 @@ def run_pipeline(
 
     except Exception as e:
         logger.warning(f"⚠️  Summary generation skipped: {str(e)}")
+
+    # ========== STAGE 7: ML PIPELINE ==========
+    logger.info("\n" + "=" * 70)
+    logger.info("[STAGE 7] Running ML pipeline (feature engineering + training)")
+    logger.info("=" * 70)
+
+    try:
+        logger.info("\n[STAGE 7A] Building feature matrix for ML")
+        feature_df = build_feature_matrix(db_path=db_path, output_path="data/intermediate/ml_features.parquet")
+        logger.info(f"✓ Feature matrix saved: {len(feature_df):,} rows, {len(feature_df.columns)} columns")
+
+        logger.info("\n[STAGE 7B] Training duration model")
+        duration_result = train_duration_model(
+            features_path="data/intermediate/ml_features.parquet",
+            save_dir="ml/saved",
+        )
+        logger.info(f"✓ Duration model saved: {duration_result['model_path']}")
+
+        logger.info("\n[STAGE 7C] Training tip model")
+        tip_result = train_tip_model(
+            features_path="data/intermediate/ml_features.parquet",
+            save_dir="ml/saved",
+        )
+        logger.info(f"✓ Tip model saved: {tip_result['model_path']}")
+
+        logger.info("\n[STAGE 7D] Exporting feature importance summary")
+        export_feature_importance()
+        logger.info("✓ ML results exported to data/intermediate/ml_results.parquet")
+
+    except Exception as e:
+        logger.error(f"✗ ML stage failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
     # ========== FINAL STATUS ==========
     logger.info("\n" + "=" * 70)

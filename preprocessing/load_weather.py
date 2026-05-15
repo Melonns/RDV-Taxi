@@ -19,6 +19,20 @@ import duckdb
 
 logger = logging.getLogger(__name__)
 
+
+WEATHER_DAILY_COLUMNS = [
+    "date",
+    "temperature_2m_mean",
+    "temperature_2m_min",
+    "temperature_2m_max",
+    "relative_humidity_2m_mean",
+    "precipitation_sum",
+    "wind_speed_10m_mean",
+    "wind_direction_10m_mean",
+    "weathercode",
+    "weather_category",
+]
+
 def load_weather_to_duckdb(
     db_path: str,
     input_parquet_files: List[str],
@@ -70,15 +84,61 @@ def load_weather_to_duckdb(
         if not daily_files:
             raise ValueError("Tidak ada file weather daily yang bisa di-load ke weather_raw")
 
-        # Load into weather_raw (Append mode)
-        logger.info("\nLoading data into weather_raw (Append mode)...")
-        
-        # Create table if it doesn't exist
-        conn.execute(f"CREATE TABLE IF NOT EXISTS weather_raw AS SELECT * FROM read_parquet('{daily_files[0]}') LIMIT 0")
-        
-        # Insert data (avoiding simple duplicates by checking date if table has data)
+        # Recreate staging table so schema always matches the current parquet layout.
+        logger.info("\nLoading data into weather_raw (recreate + append mode)...")
+        conn.execute("DROP TABLE IF EXISTS weather_raw")
+        conn.execute(
+            """
+            CREATE TABLE weather_raw AS
+            SELECT
+                date,
+                temperature_2m_mean,
+                temperature_2m_min,
+                temperature_2m_max,
+                relative_humidity_2m_mean,
+                precipitation_sum,
+                wind_speed_10m_mean,
+                wind_direction_10m_mean,
+                weathercode,
+                weather_category
+            FROM read_parquet(?)
+            LIMIT 0
+            """,
+            [daily_files[0]],
+        )
+
+        # Insert data using explicit columns to avoid parquet/table schema drift.
         for f in daily_files:
-            conn.execute(f"INSERT INTO weather_raw SELECT * FROM read_parquet('{f}') WHERE date NOT IN (SELECT date FROM weather_raw)")
+            conn.execute(
+                """
+                INSERT INTO weather_raw (
+                    date,
+                    temperature_2m_mean,
+                    temperature_2m_min,
+                    temperature_2m_max,
+                    relative_humidity_2m_mean,
+                    precipitation_sum,
+                    wind_speed_10m_mean,
+                    wind_direction_10m_mean,
+                    weathercode,
+                    weather_category
+                )
+                SELECT
+                    date,
+                    temperature_2m_mean,
+                    temperature_2m_min,
+                    temperature_2m_max,
+                    relative_humidity_2m_mean,
+                    precipitation_sum,
+                    wind_speed_10m_mean,
+                    wind_direction_10m_mean,
+                    weathercode,
+                    weather_category
+                FROM read_parquet(?)
+                WHERE date NOT IN (SELECT date FROM weather_raw)
+                """,
+                [f],
+            )
 
         row_count = conn.execute("SELECT COUNT(*) FROM weather_raw").fetchone()[0]
         logger.info(f"✓ weather_raw now contains {row_count:,} rows")
@@ -92,7 +152,8 @@ def load_weather_to_duckdb(
             logger.info("\nLoading data into weather_hourly_raw (Append mode)...")
             
             # Create table if it doesn't exist
-            conn.execute(f"CREATE TABLE IF NOT EXISTS weather_hourly_raw AS SELECT * FROM read_parquet('{hourly_files[0]}') LIMIT 0")
+            conn.execute("DROP TABLE IF EXISTS weather_hourly_raw")
+            conn.execute(f"CREATE TABLE weather_hourly_raw AS SELECT * FROM read_parquet('{hourly_files[0]}') LIMIT 0")
             
             for f in hourly_files:
                 conn.execute(f"INSERT INTO weather_hourly_raw SELECT * FROM read_parquet('{f}')")
