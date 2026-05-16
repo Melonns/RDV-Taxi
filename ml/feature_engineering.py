@@ -13,13 +13,15 @@ import pandas as pd
 
 
 def _detect_table(connection: duckdb.DuckDBPyConnection, table_name: str) -> bool:
-    return (
-        connection.execute(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?",
-            [table_name],
-        ).fetchone()[0]
-        > 0
-    )
+    result = connection.execute(
+        "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?",
+        [table_name],
+    ).fetchone()
+
+    if result is None:
+        return False
+
+    return result[0] > 0
 
 
 def build_feature_matrix(
@@ -65,9 +67,35 @@ def build_feature_matrix(
 
         borough_sql = "NULL::VARCHAR AS borough"
         borough_join = ""
+
         if has_zones and zone_table_name is not None:
-            borough_sql = "CAST(z.Borough AS VARCHAR) AS borough"
-            borough_join = f"LEFT JOIN {zone_table_name} z ON t.pickup_location_id = z.LocationID"
+            zone_columns_df = connection.execute(f"DESCRIBE {zone_table_name}").fetchdf()
+            zone_columns = zone_columns_df["column_name"].tolist()
+            zone_columns_lower = {col.lower(): col for col in zone_columns}
+
+            if "locationid" in zone_columns_lower:
+                location_col = zone_columns_lower["locationid"]
+            elif "location_id" in zone_columns_lower:
+                location_col = zone_columns_lower["location_id"]
+            else:
+                raise RuntimeError(
+                    f"Location column not found in {zone_table_name}. "
+                    f"Available columns: {zone_columns}"
+                )
+
+            if "borough" in zone_columns_lower:
+                borough_col = zone_columns_lower["borough"]
+            else:
+                raise RuntimeError(
+                    f"Borough column not found in {zone_table_name}. "
+                    f"Available columns: {zone_columns}"
+                )
+
+            borough_sql = f"CAST(z.{borough_col} AS VARCHAR) AS borough"
+            borough_join = (
+                f"LEFT JOIN {zone_table_name} z "
+                f"ON t.pickup_location_id = z.{location_col}"
+            )
 
         query = f"""
             SELECT
