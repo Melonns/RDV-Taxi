@@ -1,3 +1,12 @@
+/*
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+*/
+
 -- FACT_TRIPS: Central fact table untuk taxi trips dengan detailed metrics
 -- Join tlc_cleaned dengan dimensions (time, location, weather)
 -- Prerequisites:
@@ -88,3 +97,5 @@ WHERE t.pickup_location_id IS NOT NULL
     AND t.dropoff_location_id IS NOT NULL
     
 ORDER BY t.pickup_datetime;
+
+

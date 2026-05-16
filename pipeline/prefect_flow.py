@@ -1,3 +1,12 @@
+"""
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+"""
+
 """Master Prefect pipeline orchestrator with scheduling for automated ingestion.
 
 Koordinasi ingestion tasks:
@@ -548,3 +557,5 @@ if __name__ == "__main__":
             logger_main.warning(f"Could not read state: {e}")
         
         logger_main.info("\n" + "=" * 70)
+
+

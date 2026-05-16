@@ -1,3 +1,12 @@
+/*
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+*/
+
 -- RDV Taxi Weather Analysis
 -- Period: January - June 2025
 -- Outlier handling:
@@ -228,3 +237,4 @@ WHERE f.pickup_datetime >= DATE '2025-01-01'
   AND l.longitude BETWEEN -74.4 AND -73.5
 GROUP BY l.borough, l.zone_name, l.latitude, l.longitude
 ORDER BY total_trips DESC;
+

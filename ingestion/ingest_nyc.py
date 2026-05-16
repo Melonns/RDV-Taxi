@@ -1,4 +1,13 @@
 """
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+"""
+
+"""
 Prefect flow for ingesting NYC TLC Trip Record data.
 
 Downloads parquet files from the NYC TLC Trip Record dataset
@@ -95,3 +104,4 @@ def ingest_nyc_flow(target_month: int = None, target_year: int = None) -> list:
 if __name__ == "__main__":
     # Default behavior: download full set (backwards compatible)
     ingest_nyc_flow()
+

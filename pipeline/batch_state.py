@@ -1,3 +1,12 @@
+"""
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+"""
+
 """Batch ingestion state management untuk incremental processing.
 
 State file menyimpan metadata:
@@ -148,3 +157,5 @@ if __name__ == "__main__":
     if next_batch["is_valid"]:
         mark_batch_complete(next_batch["month"], next_batch["year"])
         print(f"Current state after marking complete: {read_state()}\n")
+
+

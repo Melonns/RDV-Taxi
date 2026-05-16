@@ -1,3 +1,12 @@
+"""
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+"""
+
 """Data Quality & Anomaly Analysis Script.
 
 Tugas: Menganalisis tabel 'raw' dan membandingkannya dengan tabel 'cleaned' 
@@ -95,3 +104,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {e}")
         print("Pastikan kamu sudah menjalankan load_tlc.py dan load_weather.py")
+
+

@@ -1,3 +1,12 @@
+/*
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+*/
+
 -- DIM_LOCATION: Dimension table untuk pickup/dropoff locations
 -- Generated from unique PULocationID/DOLocationIDs
 -- Centroid lat/lon di-JOIN dari taxi_zone_lookup (hasil ingest_zone_lookup_flow)
@@ -41,4 +50,6 @@ LEFT JOIN taxi_zone_lookup tzl
        ON l.location_id = tzl.location_id
 
 ORDER BY l.location_id;
+
+
 

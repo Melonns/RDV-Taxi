@@ -1,3 +1,12 @@
+/*
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+*/
+
 -- DIM_WEATHER: Dimension table untuk weather conditions
 -- Extract dari weather_transformed table di DuckDB (daily)
 
@@ -37,3 +46,5 @@ FROM (
     FROM weather_transformed
 )
 ORDER BY date_col;
+
+

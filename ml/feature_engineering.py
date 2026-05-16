@@ -1,3 +1,12 @@
+"""
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+"""
+
 """Build ML feature matrix from DuckDB data for tip and duration models.
 
 This module reads `data/final/tlc.duckdb`, pulls `tlc_cleaned` and optionally
@@ -171,3 +180,5 @@ def build_feature_matrix(
 
 if __name__ == "__main__":
     build_feature_matrix()
+
+

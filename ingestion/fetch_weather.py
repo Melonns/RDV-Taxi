@@ -1,3 +1,12 @@
+"""
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+"""
+
 """Weather ingestion flow for Open-Meteo historical data."""
 
 import os
@@ -219,3 +228,4 @@ if __name__ == "__main__":
     print(f"Date range: {result['date_range']}")
     print(f"Records (hourly): {result['records_hourly']}")
     print(f"Records (daily): {result['records_daily']}")
+

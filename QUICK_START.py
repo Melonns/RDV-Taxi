@@ -1,4 +1,13 @@
 """
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+"""
+
+"""
 Quick Start Guide - ELT Pipeline Tanpa Prefect
 
 Alur lengkap dari A-Z, tinggal jalanin!
@@ -228,3 +237,5 @@ print("💾 Exported: data/analysis/daily_stats.csv")
 
 conn.close()
 print("\n✅ All done!")
+
+

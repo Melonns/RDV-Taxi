@@ -1,3 +1,12 @@
+"""
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+"""
+
 """Star schema loader: Load weather to DuckDB dan buat fact + dimension tables.
 
 Workflow:
@@ -343,3 +352,5 @@ if __name__ == "__main__":
     print(f"Schema creation: {result['schema_creation']['status']}")
     print(f"Summary generated: OK")
     print("=" * 70)
+
+

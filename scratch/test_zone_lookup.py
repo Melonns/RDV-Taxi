@@ -1,3 +1,12 @@
+"""
+Kelompok Proyek Rekayasa Data:
+1. 235150201111036 DARVESH AZIZ MAWLA
+2. 235150207111063 ACHMAD ALVIAN PRASETIO
+3. 235150207111006 DZAKY REZANDI
+4. 235150201111004 WAHYU DWI LAKSANA PUTRI
+5. 235150207111065 JONATHAN SALIM
+"""
+
 """Quick test: download + enrich taxi zone lookup CSV, verify lat/lon populated."""
 
 import csv
@@ -125,3 +134,5 @@ for r in rows[:5]:
 
 null_lat_count = sum(1 for r in rows if not r["latitude"])
 logger.info(f"\nZones without coordinates: {null_lat_count}/{len(rows)}")
+
+
