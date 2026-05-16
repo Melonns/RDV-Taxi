@@ -18,8 +18,6 @@ FITUR OTOMASI:
 1. Flow bisa dijalankan manual: python pipeline/prefect_flow.py
 2. Atau via Prefect deployment dengan schedule otomatis
 
-Untuk deploy dengan scheduling:
-  prefect deploy --name weather-ingestion-scheduled
 
 Atau jalankan dengan schedule via Python:
   prefect deployment build pipeline.prefect_flow:main_pipeline \\
