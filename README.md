@@ -188,7 +188,6 @@ Important note:
 - Logs for each flow run are available in the Prefect UI; detailed task logs show whether files were downloaded or skipped because they already exist.
 - If you see `database is locked` or DuckDB IO errors, close any process holding the file (e.g., Google Drive sync) or move the project out of a synced folder.
 
-If you want, I can also add a short `run_pipeline.sh` helper script that wraps the steps above (reset, run once, check state). Want me to add that? 
 
 ## 📊 Data Sources
 
