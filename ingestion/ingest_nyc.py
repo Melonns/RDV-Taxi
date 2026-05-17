@@ -16,6 +16,7 @@ and stores them in the raw data directory.
 
 import os
 import urllib.request
+from typing import Optional
 import prefect
 from prefect import flow, task
 
@@ -53,7 +54,7 @@ def download_parquet_file(url: str, filepath: str):
         raise e
 
 @flow(name="Ingest NYC Taxi Data")
-def ingest_nyc_flow(target_month: int = None, target_year: int = None) -> list:
+def ingest_nyc_flow(target_month: Optional[int] = None, target_year: Optional[int] = None) -> list:
     """Master flow for NYC data ingestion.
 
     If `target_month` and `target_year` provided, only that month's parquet
