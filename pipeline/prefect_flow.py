@@ -487,7 +487,7 @@ if __name__ == "__main__":
         
         main_pipeline.serve(
             name="taxi-elt-batch-production",
-            cron="0 0 1 * *",  # Every day at 00:00 (midnight)
+            cron="0 0 1 * *",  # Month on the 1 st at at 00:00 (midnight)
             parameters={
                 "skip_zone_ingestion": True,
                 "skip_weather_ingestion": False,
