@@ -28,6 +28,7 @@ Usage:
 """
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -40,6 +41,8 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+ML_METRICS_PATH = Path('data/intermediate/ml_metrics.json')
 
 # Import pipeline functions
 from preprocessing.load_tlc import load_tlc_to_duckdb
@@ -54,6 +57,35 @@ from ml.feature_engineering import build_feature_matrix
 from ml.model_duration import train_duration_model
 from ml.model_tip import train_tip_model
 from ml.analysis import export_feature_importance
+
+
+def save_ml_metrics(duration_result: dict, tip_result: dict, output_path: Path = ML_METRICS_PATH) -> None:
+    """Simpan ringkasan metrik ML agar bisa dibaca dashboard."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "duration_model": {
+            "cv_rmse": duration_result.get("cv_rmse"),
+            "cv_mae": duration_result.get("cv_mae"),
+            "cv_r2": duration_result.get("cv_r2"),
+            "train_rmse": duration_result.get("train_rmse"),
+            "test_rmse": duration_result.get("test_rmse"),
+            "test_r2": duration_result.get("test_r2"),
+        },
+        "tip_model": {
+            "cv_rmse": tip_result.get("cv_rmse"),
+            "cv_mae": tip_result.get("cv_mae"),
+            "cv_r2": tip_result.get("cv_r2"),
+            "train_rmse": tip_result.get("train_rmse"),
+            "test_rmse": tip_result.get("test_rmse"),
+            "test_r2": tip_result.get("test_r2"),
+        },
+    }
+
+    with output_path.open("w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
+    logger.info(f"✓ ML metrics saved to {output_path}")
 
 
 def find_tlc_files(tlc_dir: str = "data/raw") -> List[str]:
@@ -267,6 +299,9 @@ def run_pipeline(
             save_dir="ml/saved",
         )
         logger.info(f"✓ Duration model saved: {duration_result['model_path']}")
+        logger.info(
+            f"   Duration CV: RMSE={duration_result['cv_rmse']:.4f}, MAE={duration_result['cv_mae']:.4f}, R²={duration_result['cv_r2']:.4f}"
+        )
 
         logger.info("\n[STAGE 7C] Training tip model")
         tip_result = train_tip_model(
@@ -274,10 +309,16 @@ def run_pipeline(
             save_dir="ml/saved",
         )
         logger.info(f"✓ Tip model saved: {tip_result['model_path']}")
+        logger.info(
+            f"   Tip CV: RMSE={tip_result['cv_rmse']:.4f}, MAE={tip_result['cv_mae']:.4f}, R²={tip_result['cv_r2']:.4f}"
+        )
 
         logger.info("\n[STAGE 7D] Exporting feature importance summary")
         export_feature_importance()
         logger.info("✓ ML results exported to data/intermediate/ml_results.parquet")
+
+        logger.info("\n[STAGE 7E] Saving ML metrics summary")
+        save_ml_metrics(duration_result, tip_result)
 
     except Exception as e:
         logger.error(f"✗ ML stage failed: {str(e)}")

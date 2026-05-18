@@ -106,6 +106,36 @@ def create_star_schema(
     conn = duckdb.connect(db_path)
 
     try:
+        # Ensure weather_transformed exists so dim_weather.sql can run even when
+        # weather ingestion has not been executed yet.
+        weather_transformed_exists = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema = 'main'
+              AND table_name = 'weather_transformed'
+            """
+        ).fetchone()[0] > 0
+
+        if not weather_transformed_exists:
+            logger.warning("⚠️  weather_transformed table not found; creating empty fallback table")
+            conn.execute(
+                """
+                CREATE OR REPLACE TABLE weather_transformed AS
+                SELECT
+                    CAST(NULL AS DATE) AS date_actual,
+                    CAST(NULL AS DOUBLE) AS avg_temperature,
+                    CAST(NULL AS DOUBLE) AS avg_humidity,
+                    CAST(NULL AS DOUBLE) AS total_precipitation,
+                    CAST(NULL AS DOUBLE) AS wind_speed,
+                    CAST(NULL AS DOUBLE) AS wind_direction,
+                    CAST(NULL AS INTEGER) AS weather_code,
+                    CAST(NULL AS VARCHAR) AS weather_category,
+                    CAST(NULL AS VARCHAR) AS temperature_category
+                WHERE FALSE;
+                """
+            )
+
         # ── Pre-step: Load taxi zone lookup (needed by dim_location.sql JOIN) ──
         zone_csv = Path(models_dir).parent / "data" / "raw" / "tlc" / "taxi_zone_lookup.csv"
         # Fallback ke default path jika relative path tidak ketemu

@@ -17,8 +17,8 @@ import joblib
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import cross_validate, train_test_split
 
 logger = logging.getLogger(__name__)
 
@@ -97,16 +97,23 @@ def train_tip_model(
 
     # Cross-validation
     logger.info(f"[TIP] Computing cross-validation scores (cv=5)...")
-    cv_scores = cross_val_score(
+    cv_scores = cross_validate(
         model,
         X_train,
         y_train,
         cv=5,
-        scoring="neg_root_mean_squared_error",
+        scoring={
+            "rmse": "neg_root_mean_squared_error",
+            "mae": "neg_mean_absolute_error",
+            "r2": "r2",
+        },
         n_jobs=1,
+        return_train_score=False,
     )
-    cv_rmse = float(-cv_scores.mean())
-    logger.info(f"[TIP] CV RMSE: {cv_rmse:.4f}")
+    cv_rmse = float(-cv_scores["test_rmse"].mean())
+    cv_mae = float(-cv_scores["test_mae"].mean())
+    cv_r2 = float(cv_scores["test_r2"].mean())
+    logger.info(f"[TIP] CV RMSE: {cv_rmse:.4f}, CV MAE: {cv_mae:.4f}, CV R²: {cv_r2:.4f}")
 
     # Evaluation
     logger.info(f"[TIP] Evaluating on test set...")
@@ -131,6 +138,8 @@ def train_tip_model(
         "model_path": str(model_path),
         "features_file": str(features_file),
         "cv_rmse": cv_rmse,
+        "cv_mae": cv_mae,
+        "cv_r2": cv_r2,
         "train_rmse": train_rmse,
         "test_rmse": test_rmse,
         "test_r2": test_r2,

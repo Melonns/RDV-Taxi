@@ -18,6 +18,7 @@ Fokus dashboard:
 """
 
 from pathlib import Path
+import json
 
 import duckdb
 import pandas as pd
@@ -28,6 +29,7 @@ import streamlit as st
 
 DB_PATH = Path("data/final/tlc.duckdb")
 ML_PATH = Path("data/intermediate/ml_results.parquet")
+ML_METRICS_PATH = Path("data/intermediate/ml_metrics.json")
 
 
 # Palette sederhana: 2 warna utama + 1 accent + netral
@@ -77,6 +79,41 @@ def style_figure(fig, showlegend: bool = False):
         yaxis=dict(gridcolor=COLOR_GRID),
     )
     return fig
+
+
+def build_metric_bar_chart(metric_name: str, duration_value: float, tip_value: float, title: str, color_duration: str, color_tip: str):
+    """Membuat chart perbandingan dua model untuk satu metrik."""
+    chart_df = pd.DataFrame(
+        [
+            {"model": "Durasi", "value": duration_value},
+            {"model": "Tip", "value": tip_value},
+        ]
+    )
+
+    fig = px.bar(
+        chart_df,
+        x="model",
+        y="value",
+        color="model",
+        text_auto=".4f",
+        title=title,
+        labels={"model": "Model", "value": metric_name},
+        color_discrete_map={"Durasi": color_duration, "Tip": color_tip},
+    )
+    fig.update_traces(textposition="outside")
+    fig = style_figure(fig, showlegend=False)
+    fig.update_yaxes(title_text=metric_name)
+    return fig
+
+
+@st.cache_data(show_spinner=False)
+def load_ml_metrics() -> dict:
+    """Membaca metrik evaluasi model dari file JSON."""
+    if not ML_METRICS_PATH.exists():
+        return {}
+
+    with ML_METRICS_PATH.open("r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def main():
@@ -572,6 +609,80 @@ def main():
             persentase tip dan durasi perjalanan.
             """
         )
+
+        metrics = load_ml_metrics()
+
+        if metrics:
+            st.markdown("#### Evaluasi Model")
+            duration_metrics = metrics.get("duration_model", {})
+            tip_metrics = metrics.get("tip_model", {})
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Model Durasi**")
+                d1, d2, d3 = st.columns(3)
+                d1.metric("CV RMSE", f"{duration_metrics.get('cv_rmse', float('nan')):.4f}")
+                d2.metric("CV MAE", f"{duration_metrics.get('cv_mae', float('nan')):.4f}")
+                d3.metric("CV R²", f"{duration_metrics.get('cv_r2', float('nan')):.4f}")
+
+            with col2:
+                st.markdown("**Model Tip**")
+                t1, t2, t3 = st.columns(3)
+                t1.metric("CV RMSE", f"{tip_metrics.get('cv_rmse', float('nan')):.4f}")
+                t2.metric("CV MAE", f"{tip_metrics.get('cv_mae', float('nan')):.4f}")
+                t3.metric("CV R²", f"{tip_metrics.get('cv_r2', float('nan')):.4f}")
+
+            st.markdown("#### Grafik Perbandingan")
+            c1, c2, c3 = st.columns(3)
+
+            with c1:
+                st.plotly_chart(
+                    build_metric_bar_chart(
+                        "CV RMSE",
+                        duration_metrics.get("cv_rmse", 0.0),
+                        tip_metrics.get("cv_rmse", 0.0),
+                        "Perbandingan CV RMSE",
+                        COLOR_PRIMARY,
+                        COLOR_ACCENT,
+                    ),
+                    use_container_width=True,
+                )
+
+            with c2:
+                st.plotly_chart(
+                    build_metric_bar_chart(
+                        "CV MAE",
+                        duration_metrics.get("cv_mae", 0.0),
+                        tip_metrics.get("cv_mae", 0.0),
+                        "Perbandingan CV MAE",
+                        COLOR_PRIMARY,
+                        COLOR_ACCENT,
+                    ),
+                    use_container_width=True,
+                )
+
+            with c3:
+                st.plotly_chart(
+                    build_metric_bar_chart(
+                        "CV R²",
+                        duration_metrics.get("cv_r2", 0.0),
+                        tip_metrics.get("cv_r2", 0.0),
+                        "Perbandingan CV R²",
+                        COLOR_PRIMARY,
+                        COLOR_ACCENT,
+                    ),
+                    use_container_width=True,
+                )
+
+            with st.expander("Lihat detail angka evaluasi"):
+                metrics_df = pd.DataFrame(
+                    [
+                        {"model": "duration", **duration_metrics},
+                        {"model": "tip", **tip_metrics},
+                    ]
+                )
+                st.dataframe(metrics_df, use_container_width=True)
 
         if not ML_PATH.exists():
             st.warning("File ML results belum tersedia: data/intermediate/ml_results.parquet")
