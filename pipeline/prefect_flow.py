@@ -379,7 +379,7 @@ def main_pipeline(
 # OTOMASI / SCHEDULING - OPTIMIZED FOR INCREMENTAL BATCH INGESTION
 # ===================================================================
 # 
-# SCHEDULE YANG DIPILIH: Setiap 5-10 menit (untuk demo/development)
+# SCHEDULE YANG DIPILIH: Setiap 5 menit (untuk demo/development)
 # - Batch per bulan (bukan all at once)
 # - State-driven: otomatis determine bulan mana yang belum diproses
 # - Graceful handling: jika semua bulan sudah processed, skip ingestion
@@ -396,7 +396,7 @@ def main_pipeline(
 # 1. DEMO/DEVELOPMENT - Every 5 minutes (development):
 #    python pipeline/prefect_flow.py --mode demo
 #
-# 2. PRODUCTION - Daily at 00:00 (realistic production):
+# 2. PRODUCTION - Monthly at 1 00:00 (realistic production):
 #    python pipeline/prefect_flow.py --mode production
 #
 # 3. MANUAL - Run once now:
@@ -421,16 +421,16 @@ def setup_demo_schedule():
 
 
 def setup_production_schedule():
-    """Setup production schedule: Daily at 00:00 dengan batch ingestion."""
+    """Setup production schedule: Monthly at 00:00 dengan batch ingestion."""
     logger = get_run_logger()
     logger.info("\n📅 Production Schedule Setup (BATCH INGESTION - Daily):")
     logger.info("  Schedule: TLC + Weather + Zone Pipeline")
-    logger.info("    ↳ Frequency: Daily at 00:00 (midnight)")
+    logger.info("    ↳ Frequency: Monthly at 00:00 (midnight)")
     logger.info("    ↳ Mode: State-driven batch processing")
     logger.info("    ↳ Timezone: America/New_York")
     logger.info("\n  Behavior:")
     logger.info("    ✓ Each day processes next month's data (if available)")
-    logger.info("    ✓ After ~6 days, all months (Jan-Jun) will be processed")
+    logger.info("    ✓ After ~6, all months (Jan-Jun) will be processed")
     logger.info("    ✓ Pipeline continues but skips ingestion gracefully")
     logger.info("    ✓ Stable production schedule")
 
@@ -475,7 +475,7 @@ if __name__ == "__main__":
         )
     
     elif mode == "production":
-        # Production: Daily at 00:00 (midnight) dengan batch ingestion
+        # Production: Monthly at 00:00 (midnight) dengan batch ingestion
         logger_main.info("\n" + "=" * 70)
         logger_main.info("🚀 LAUNCHING PRODUCTION MODE - Batch ingestion daily")
         logger_main.info("=" * 70)
@@ -487,7 +487,7 @@ if __name__ == "__main__":
         
         main_pipeline.serve(
             name="taxi-elt-batch-production",
-            cron="0 0 * * *",  # Every day at 00:00 (midnight)
+            cron="0 0 1 * *",  # Every day at 00:00 (midnight)
             parameters={
                 "skip_zone_ingestion": True,
                 "skip_weather_ingestion": False,
@@ -514,7 +514,7 @@ if __name__ == "__main__":
         
         logger_main.info("\nTo setup automatic batch scheduling:")
         logger_main.info("  python pipeline/prefect_flow.py --mode demo       # Every 5 min (testing)")
-        logger_main.info("  python pipeline/prefect_flow.py --mode production # Daily at 00:00 (prod)")
+        logger_main.info("  python pipeline/prefect_flow.py --mode production # Monthly at 1 00:00 (prod)")
         
         # Show current state
         try:
