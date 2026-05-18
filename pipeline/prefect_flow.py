@@ -423,9 +423,9 @@ def setup_demo_schedule():
 def setup_production_schedule():
     """Setup production schedule: Monthly at 00:00 dengan batch ingestion."""
     logger = get_run_logger()
-    logger.info("\n📅 Production Schedule Setup (BATCH INGESTION - Daily):")
+    logger.info("\n📅 Production Schedule Setup (BATCH INGESTION - Monthly):")
     logger.info("  Schedule: TLC + Weather + Zone Pipeline")
-    logger.info("    ↳ Frequency: Monthly at 00:00 (midnight)")
+    logger.info("    ↳ Frequency: Monthly on the 1st at 00:00 (midnight)")
     logger.info("    ↳ Mode: State-driven batch processing")
     logger.info("    ↳ Timezone: America/New_York")
     logger.info("\n  Behavior:")
@@ -479,8 +479,8 @@ if __name__ == "__main__":
         logger_main.info("\n" + "=" * 70)
         logger_main.info("🚀 LAUNCHING PRODUCTION MODE - Batch ingestion daily")
         logger_main.info("=" * 70)
-        logger_main.info("\nSchedule: ✓ Daily at 00:00 (midnight)")
-        logger_main.info("Behavior: ✓ Process 1 month per day (Jan→Feb→Mar→...→Jun)")
+        logger_main.info("\nSchedule: ✓ Monthly on the 1st at 00:00 (midnight)")
+        logger_main.info("Behavior: ✓ Process 1 month data per execution")
         logger_main.info("State:    ✓ Tracked in data/pipeline_state.json")
         logger_main.info("Zone:     ✓ Already ingested (skipped for efficiency)")
         logger_main.info("\nAfter ~6 days, all months will be processed.\n")
@@ -514,7 +514,7 @@ if __name__ == "__main__":
         
         logger_main.info("\nTo setup automatic batch scheduling:")
         logger_main.info("  python pipeline/prefect_flow.py --mode demo       # Every 5 min (testing)")
-        logger_main.info("  python pipeline/prefect_flow.py --mode production # Monthly at 1 00:00 (prod)")
+        logger_main.info("  python pipeline/prefect_flow.py --mode production # Monthly on the 1st at 00:00 (prod)")
         
         # Show current state
         try:
